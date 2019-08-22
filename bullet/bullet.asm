@@ -49,6 +49,8 @@ sprite_bullet1: .dsb 4
 
 sprite_bullet2: .dsb 4
 
+barrels: 		.dsb 64
+
 	.ende
 
 ;----------------------------------------------------------------
@@ -122,7 +124,7 @@ load_palettes_loop:
 	sta bullet1_y
 	lda #7
 	sta bullet1_direction
-	lda #1
+	lda #0
 	sta bullet1_slowed
 
 	lda #RIGHT_WALL - 8		; Spawning a bullet for test purposes.
@@ -131,8 +133,28 @@ load_palettes_loop:
 	sta bullet2_y
 	lda #9
 	sta bullet2_direction
-	lda #1
+	lda #0
 	sta bullet2_slowed
+
+	lda #CENTER_SCREEN - 30	; Spawning a barrel for test purposes.
+	sta barrels + 0 + 0
+	lda #CENTER_SCREEN - 36
+	sta barrels + 3 + 0
+
+	lda #CENTER_SCREEN - 30 + 8
+	sta barrels + 0 + 4
+	lda #CENTER_SCREEN - 36
+	sta barrels + 3 + 4
+
+	lda #CENTER_SCREEN		; Spawning a barrel for test purposes.
+	sta barrels + 0 + 8
+	lda #CENTER_SCREEN - 8
+	sta barrels + 3 + 8
+
+	lda #CENTER_SCREEN + 8
+	sta barrels + 0 + 12
+	lda #CENTER_SCREEN - 8
+	sta barrels + 3 + 12
 
 	jsr update_sprites		; Update the sprites for the first screen.
 
@@ -167,6 +189,8 @@ checking_collisions:
 	jsr check_side_collisions
 	jsr check_top_collisions
 	jsr check_bot_collisions
+
+	jsr check_barrel_collisions
 
 collisions_done:
 
@@ -283,6 +307,71 @@ check_bot_collisions_loop_ok:
 	jmp check_bot_collisions_loop
 
 check_bot_collisions_done:
+	rts
+
+; Function check_barrel_collisions
+; No arguments and no return.
+; Checks collisions with barrels for both bullets and deals with the effects.
+check_barrel_collisions:
+	ldx #$0
+check_barrel_collisions_outer_loop:		; loop over the two bullets which are at positions bullets and bullets + 4 in memory.
+	cpx #8
+	beq check_barrel_collisions_done
+
+	ldy #$0
+check_barrel_collisions_inner_loop:		; Loop over the eight barrels in positions barrels, barrels + 8, ... barrels + 56 in memory.
+	cpy #64
+	beq check_barrel_collisions_outer_loop_ok
+
+	lda barrels + 0, Y		; Barrel y_min
+	sec
+	sbc #1
+	cmp bullets + 1, X		; Compare with bullet y.
+	bcs	check_barrel_collisions_inner_loop_ok	; y_min - 1 >= bullet_y, so no collision
+
+	lda barrels + 0, Y		; Barrel y_min
+	clc
+	adc #7					; Barrel y_max now.
+	cmp bullets + 1, X		; Compare with bullet y.
+	bcc	check_barrel_collisions_inner_loop_ok	; y_max < bullet_y, so no collision
+	
+	lda barrels + 3, Y		; Barrel x_min
+	sec
+	sbc #1
+	cmp bullets + 0, X		; Compare with bullet x.
+	bcs	check_barrel_collisions_inner_loop_ok	; x_min - 1 >= bullet_x, so no collision
+
+	lda barrels + 3, Y		; Barrel x_min
+	clc
+	adc #7					; Barrel x_max now.
+	cmp bullets + 0, X		; Compare with bullet x.
+	bcc	check_barrel_collisions_inner_loop_ok	; x_max < bullet_x, so no collision
+
+check_barrel_collisions_inner_loop_found:
+	lda #1
+	sta bullets + 3, X	; Bullet is now slowed.
+
+	lda #OFFSCREEN
+	sta barrels + 0, Y		; Send all parts of the barrel offscreen
+	sta barrels + 3, Y
+	sta barrels + 0 + 4, Y
+	sta barrels + 3 + 4, Y
+
+check_barrel_collisions_inner_loop_ok:
+	tya
+	clc
+	adc #8
+	tay
+	jmp check_barrel_collisions_inner_loop
+
+check_barrel_collisions_outer_loop_ok:
+	inx
+	inx
+	inx
+	inx
+	jmp check_barrel_collisions_outer_loop
+
+check_barrel_collisions_done:
 	rts
 
 ; Function update_frame_counter.
@@ -403,6 +492,23 @@ update_sprites:
 	sta sprite_bullet2 + 2
 	lda bullet2_x
 	sta sprite_bullet2 + 3
+
+	ldx #$0
+update_sprites_barrel_loop:			; Shows all barrels. Will need to be changed when barrels have two different sprites.
+	cpx #64
+	beq update_sprites_barrel_loop_end
+
+	lda #$80
+	sta barrels + 1, x
+	lda #$00
+	sta barrels + 2, x
+
+	inx
+	inx
+	inx
+	inx
+	jmp update_sprites_barrel_loop
+update_sprites_barrel_loop_end:
 
 	rts
 
