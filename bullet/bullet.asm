@@ -7,8 +7,8 @@ MIRRORING		= %0001 ; %0000 = horizontal, %0001 = vertical, %1000 = four-screen
 
 RIGHT_WALL      = $F0	; When a bullet reaches one of these, handle colision.
 TOP_WALL        = $20
-BOTTOM_WALL     = $E0
-LEFT_WALL       = $10
+BOTTOM_WALL     = $D0
+LEFT_WALL       = $08
 
 CENTER_SCREEN	= $80
 
@@ -20,7 +20,7 @@ OFFSCREEN		= $FE	; Sprites offscreen will be placed in position (OFFSCREEN, OFFS
 
 	.enum $0000
 
-	frame_counter: 		.dsb 1	; Counter the increments each frame (obviously overflows).
+	frame_counter: 		.dsb 1	; Counter that increments each frame (obviously overflows).
 	buttons1:			.dsb 1	; Player 1 gamepad buttons, one bit per button.
 	buttons2:			.dsb 1  ; Player 2 gamepad buttons, one bit per button.
 
@@ -55,11 +55,11 @@ sprite_bullet2: .dsb 4
 ; iNES header
 ;----------------------------------------------------------------
 
-	.db "NES", $1a ;identification of the iNES header
-	.db PRG_COUNT ;number of 16KB PRG-ROM pages
-	.db $01 ;number of 8KB CHR-ROM pages
-	.db $00|MIRRORING ;mapper 0 and mirroring
-	.dsb 9, $00 ;clear the remaining bytes
+	.db "NES", $1a		; Identification of the iNES header
+	.db PRG_COUNT		; Number of 16KB PRG-ROM pages
+	.db $01				; Number of 8KB CHR-ROM pages
+	.db $00|MIRRORING	; Mapper 0 and mirroring
+	.dsb 9, $00			; Clear the remaining bytes
 
 ;----------------------------------------------------------------
 ; program bank(s)
@@ -78,7 +78,7 @@ reset:
 	stx $2001    ; disable rendering
 	stx $4010    ; disable DMC IRQs
 
-vblank_wait1:       ; First wait for vblank to make sure PPU is ready
+vblank_wait1:	 ; First wait for vblank to make sure PPU is ready
 	bit $2002
 	bpl vblank_wait1
 
@@ -112,34 +112,39 @@ load_palettes_loop:
 	sta $2007             ; write to PPU
 	inx                   ; set index to next byte
 	cpx #$20            
-	bne load_palettes_loop  ;if x = $20, 32 bytes copied, all done
+	bne load_palettes_loop  ; if x = $20, 32 bytes copied, all done
 
-;;; Set starting game state
+;;; Set starting game state.
 
-	lda #CENTER_SCREEN
+	lda #LEFT_WALL + 8		; Spawning a bullet for test purposes.
 	sta bullet1_x
 	lda #CENTER_SCREEN
 	sta bullet1_y
-
+	lda #7
+	sta bullet1_direction
 	lda #1
 	sta bullet1_slowed
 
-	lda #CENTER_SCREEN
+	lda #RIGHT_WALL - 8		; Spawning a bullet for test purposes.
 	sta bullet2_x
 	lda #CENTER_SCREEN
 	sta bullet2_y
+	lda #9
+	sta bullet2_direction
+	lda #1
+	sta bullet2_slowed
 
-	jsr update_sprites
+	jsr update_sprites		; Update the sprites for the first screen.
 
-	lda #%10000000   ; enable NMI, sprites from Pattern Table 0
+	lda #%10000000   		; enable NMI, sprites from Pattern Table 0
 	sta $2000
 
-	lda #%00010000   ; enable sprites
+	lda #%00010000   		; enable sprites
 	sta $2001
 
 
 forever:
-	jmp forever			; jump back to forever, infinite loop, waiting for NMI
+	jmp forever		; jump back to forever, infinite loop, waiting for NMI
 
 
 NMI:
@@ -157,37 +162,128 @@ game_engine:
 
 	jsr update_frame_counter
 
-	lda frame_counter
-	and #%00011111
-	cmp #$0
-	bne after_change_direction
+checking_collisions:
 
-	lda bullet1_direction
-	clc
-	adc #1
-	and #%00011111
-	sta bullet1_direction
-	lda #CENTER_SCREEN
-	sta bullet1_x        ; put sprite 0 in center ($80) of screen vert
-	lda #CENTER_SCREEN
-	sta bullet1_y        ; put sprite 0 in center ($80) of screen horiz
+	jsr check_side_collisions
+	jsr check_top_collisions
+	jsr check_bot_collisions
 
-after_change_direction:
+collisions_done:
 
 	ldx #$0
-	jsr move_bullet
+	jsr move_bullet		; Move player 1's bullet.
 
 	ldx #$1
-	jsr move_bullet
+	jsr move_bullet		; Move player 2's bullet.
 
 game_engine_done:
 
-	jsr update_sprites	; Set bullet positions from memory.
+	jsr update_sprites
 	rti					; return from interrupt
 
 ;----------------------------------------------------------------
 ; functions
 ;----------------------------------------------------------------
+
+; Function check_side_collisions
+; No arguments and no return.
+; Checks collisions with the sides of the screen for both bullets and deals with the effects.
+check_side_collisions:
+	ldx #$0
+check_side_collisions_loop:		; loop over the two bullets which are at positions bullets and bullets + 4 in memory.
+	cpx #8
+	beq check_side_collisions_done
+
+	lda bullets + 0, X	; Bullet x.
+	cmp #LEFT_WALL
+	bcc check_side_collisions_loop_found ; A < #LEFT_WALL
+	cmp #RIGHT_WALL
+	bcs check_side_collisions_loop_found ; A >= #RIGHT_WALL
+	jmp check_side_collisions_loop_ok
+
+check_side_collisions_loop_found:	; If found a collision bullet goes off-screen.
+	lda #OFFSCREEN
+	sta bullets + 0, X	; Bullet x.
+	lda #OFFSCREEN
+	sta bullets + 1, X	; Bullet y.
+
+check_side_collisions_loop_ok:
+	inx
+	inx
+	inx
+	inx
+	jmp check_side_collisions_loop
+
+check_side_collisions_done:
+	rts
+
+; Function check_top_collisions
+; No arguments and no return.
+; Checks collisions with the top of the screen for both bullets and deals with the effects.
+check_top_collisions:
+	ldx #$0
+check_top_collisions_loop:		; loop over the two bullets which are at positions bullets and bullets + 4 in memory.
+	cpx #8
+	beq check_top_collisions_done
+
+	lda bullets + 1, X	; Bullet y.
+	cmp #TOP_WALL
+	bcc check_top_collisions_loop_found ; A < #TOP_WALL
+	jmp check_top_collisions_loop_ok
+
+check_top_collisions_loop_found:	; If found a collision bullet bounces.
+	lda bullets + 2, X	; Bullet direction.
+	cmp #16
+	bcs	check_top_collisions_loop_ok	; A >= #16, if already moving down, don't collide.
+	cmp #0
+	beq check_top_collisions_loop_ok	; A == #0, don't collide.
+	lda #32
+	sec
+	sbc bullets + 2, X
+	sta bullets + 2, X	; New direction = 32 - old direction.
+
+check_top_collisions_loop_ok:
+	inx
+	inx
+	inx
+	inx
+	jmp check_top_collisions_loop
+
+check_top_collisions_done:
+	rts
+
+; Function check_bot_collisions
+; No arguments and no return.
+; Checks collisions with the bottom of the screen for both bullets and deals with the effects.
+check_bot_collisions:
+	ldx #$0
+check_bot_collisions_loop:		; loop over the two bullets which are at positions bullets and bullets + 4 in memory.
+	cpx #8
+	beq check_bot_collisions_done
+
+	lda bullets + 1, X	; Bullet y.
+	cmp #BOTTOM_WALL
+	bcs check_bot_collisions_loop_found ; A >= #BOTTOM_WALL
+	jmp check_bot_collisions_loop_ok
+
+check_bot_collisions_loop_found:	; If found a collision bullet bounces.
+	lda bullets + 2, X	; Bullet direction.
+	cmp #17
+	bcc	check_bot_collisions_loop_ok	; A < #17, if already moving up, don't collide.
+	lda #32
+	sec
+	sbc bullets + 2, X
+	sta bullets + 2, X	; New direction = 32 - old direction.
+
+check_bot_collisions_loop_ok:
+	inx
+	inx
+	inx
+	inx
+	jmp check_bot_collisions_loop
+
+check_bot_collisions_done:
+	rts
 
 ; Function update_frame_counter.
 ; Increments the frame counter by one.
@@ -204,10 +300,10 @@ update_frame_counter:
 ; This method moves the bullet (if currently on-screen) according to its direction and slowed fields.
 ; This only updates the bullet variables (not the sprite data).
 move_bullet:
-	txa					; X = 4*X to get correct pointer increment.
+	txa					; X = 4*X to get correct pointer increment. 
 	asl A
 	asl A
-	tax
+	tax					; The two bullets are at positions bullets and bullets + 4 in memory.
 
 	lda bullets + 0, X	; Bullet x.
 	cmp #OFFSCREEN
