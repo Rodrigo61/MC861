@@ -28,10 +28,20 @@ P1_SPRITE  = $0200
 P2_SPRITE  = P1_SPRITE + 16
 
 ; Cooldown for gamepad reading
-READ_BUTTON_COOLDOWN = $08
+READ_BUTTON_COOLDOWN = $18    ; empirical choice
 
 SPRITES_COUNT = $20 ; just have 8 sprites for now
 PALETTE_COUNT = $20 ; 2 palettes of 16 bytes
+
+; Gamepad buttons bits
+BUTTON_A = %10000000
+BUTTON_B = %01000000
+BUTTON_SELECT = %00100000
+BUTTON_START = %00010000
+BUTTON_UP = %00001000
+BUTTON_DOWN = %00000100
+BUTTON_LEFT = %00000010
+BUTTON_RIGHT = %00000001
 
 ;################################################################
 ; Variables
@@ -51,6 +61,7 @@ PALETTE_COUNT = $20 ; 2 palettes of 16 bytes
   ; Gamepad buttons, one bit per button in the following order: A, B, Select, Start, Up, Down, Left, Right
   P1_buttons   .dsb 1  
   P2_buttons   .dsb 1
+  aux_buttons  .dsb 1
 
   ; Current reading cooldown of gamepad buttons
   P1_buttons_cooldown .dsb 1
@@ -95,17 +106,15 @@ PALETTE_COUNT = $20 ; 2 palettes of 16 bytes
 ; Function to call all other update functions related to the game state
 update_game_state:  
   JSR P1_controller_handler
-  JSR update_players_direction_by_wall_collision
-  JSR update_positions
-  JSR update_sprites  
-  RTS
-
-;--------------------------------------------------------------------------
-; Function that updates the players' direction when a wall collision is detected. This direction update
-; consists of reversing the player's direction. 
-update_players_direction_by_wall_collision:
+  JSR P2_controller_handler
   JSR update_P1_direction_by_wall_collision
   JSR update_P2_direction_by_wall_collision
+  JSR update_P1_direction_by_wall_collision
+  JSR update_P2_direction_by_wall_collision
+  JSR update_P1_positions
+  JSR update_P2_positions
+  JSR update_players_sprites
+  RTS
 
 ;--------------------------------------------------------------------------
 update_P1_direction_by_wall_collision:
@@ -175,20 +184,6 @@ end_update_P2_direction_by_wall_collision:
   RTS
 
 ;--------------------------------------------------------------------------
-; This calls functions that update all elements' positions in the
-; game
-update_positions:
-  ; JSR update_shots_positions
-  JSR update_players_positions
-  RTS
-
-;--------------------------------------------------------------------------
-update_players_positions:
-  JSR update_P1_positions
-  JSR update_P2_positions
-  RTS
-
-;--------------------------------------------------------------------------
 update_P1_positions:
   LDA P1_direction
   CMP #UP_DIRECTION
@@ -227,12 +222,6 @@ end_update_P2_positions:
   RTS
 
 ;--------------------------------------------------------------------------
-update_sprites:
-  ; JSR update_shots
-  JSR update_players_sprites
-  RTS
- 
-;--------------------------------------------------------------------------
 ; This function copies the current players' positions into the position's bytes
 ; in their sprites
 update_players_sprites:
@@ -256,47 +245,107 @@ update_players_sprites:
   RTS
   
 ;--------------------------------------------------------------------------
+; This function reads the P1 controller, but it uses an aux variable to read.
+; The value of this aux variable is only copied to P1_buttons variable when
+; the player actually pressed a button and the cooldown time has finished.
+; This aux variable strategy avoids entering in the cooldown time even without 
+; pressing a button.
+; The cooldown time is required because the frame rate is too quickly
 read_P1_controller:
-
-  ; Check if cooldown time has finished
-  LDA P1_buttons_cooldown
-  CMP #0
-  BNE read_P1_controller_end
-
+  ; Serial buttons reading 
   LDA #$01
   STA $4016
   LDA #$00
   STA $4016
   LDX #$08
 read_P1_controller_loop:
-  LDA $4016
-  LSR A              ; bit0 -> Carry
-  ROL P1_buttons     ; bit0 <- Carry
+  LDA $4016           ; 4016 is correct port for P2
+  LSR A               ; bit0 -> Carry
+  ROL aux_buttons     ; bit0 <- Carry
   DEX
   BNE read_P1_controller_loop
 
-  ; Reset reading cooldown
+  ; Check if some button was clicked, i.e. some bit have to be 1
+  LDA aux_buttons
+  CMP #0
+  BEQ P1_button_cooldown_update
+
+  ; Check if cooldown time has finished
+  LDA P1_buttons_cooldown
+  CMP #0
+  BEQ apply_reading_P1
+
+  ; None button was clicked or cooldown time hasn't finished
+  ; we just ignore the reading
+  JMP P1_button_cooldown_update
+
+apply_reading_P1:
+  ; Reset cooldown
   LDA #READ_BUTTON_COOLDOWN
   STA P1_buttons_cooldown
+  ; Transfer aux variable
+  LDA aux_buttons
+  STA P1_buttons
+
+P1_button_cooldown_update:
+  ; if cooldown > 0, decrement it
+  ; else finish the function
+  LDA P1_buttons_cooldown
+  CMP #0
+  BEQ read_P1_controller_end
+  DEC P1_buttons_cooldown
 
 read_P1_controller_end:
-  DEC P1_buttons_cooldown
   RTS
 
 ;--------------------------------------------------------------------------
-read_controler2:
+; Same function as 'read_P1_controller', but for Player 2
+read_P2_controller:
+  ; Serial buttons reading 
   LDA #$01
   STA $4016
   LDA #$00
   STA $4016
   LDX #$08
 read_P2_controller_loop:
-  LDA $4017
-  LSR A              ; bit0 -> Carry
-  ROL P2_buttons     ; bit0 <- Carry
+  LDA $4017           ; 4017 is correct port for P2
+  LSR A               ; bit0 -> Carry
+  ROL aux_buttons     ; bit0 <- Carry
   DEX
   BNE read_P2_controller_loop
-  RTS  
+
+  ; Check if some button was clicked, i.e. some bit have to be 1
+  LDA aux_buttons
+  CMP #0
+  BEQ P2_button_cooldown_update
+
+  ; Check if cooldown time has finished
+  LDA P2_buttons_cooldown
+  CMP #0
+  BEQ apply_reading_P2
+
+  ; None button was clicked or cooldown time hasn't finished
+  ; we just ignore the reading
+  JMP P2_button_cooldown_update
+
+apply_reading_P2:
+  ; Reset cooldown
+  LDA #READ_BUTTON_COOLDOWN
+  STA P2_buttons_cooldown
+  ; Transfer aux variable
+  LDA aux_buttons
+  STA P2_buttons
+
+P2_button_cooldown_update:
+  ; if cooldown > 0, decrement it
+  ; else finish the function
+  LDA P2_buttons_cooldown
+  CMP #0
+  BEQ read_P2_controller_end
+  DEC P2_buttons_cooldown
+
+read_P2_controller_end:
+  RTS
 
 ;--------------------------------------------------------------------------
 ; This is the PPU clean up section, so rendering the next frame starts properly.
@@ -321,11 +370,11 @@ dma_transfer:
   RTS
 
 ;--------------------------------------------------------------------------
-; Função handler do controle 1
+; This function updates player 1 direction by reversing it if button A was pressed
 P1_controller_handler:
   LDA P1_buttons
-  CMP #0
-  BEQ end_P1_controller_handler
+  CMP #BUTTON_A
+  BNE end_P1_controller_handler
 
   ; Reverse Player direction
   LDA P1_direction
@@ -345,6 +394,33 @@ set_P1_direction_to_down:
 end_P1_controller_handler:
   LDA #0
   STA P1_buttons
+  RTS
+
+;--------------------------------------------------------------------------
+; This function updates player 2 direction by reversing it if button A was pressed
+P2_controller_handler:
+  LDA P2_buttons
+  CMP #BUTTON_A
+  BNE end_P2_controller_handler
+
+  ; Reverse Player direction
+  LDA P2_direction
+  CMP #UP_DIRECTION
+  BEQ set_P2_direction_to_down
+
+  ; direction == DOWN_DIRECTION, so direction = UP_DIRECTION
+  LDA #UP_DIRECTION
+  STA P2_direction
+  JMP end_P2_controller_handler
+
+set_P2_direction_to_down:
+  ; direction == UP_DIRECTION, so direction = DOWN_DIRECTION
+  LDA #DOWN_DIRECTION
+  STA P2_direction
+  
+end_P2_controller_handler:
+  LDA #0
+  STA P2_buttons
   RTS
   
 ;################################################################
@@ -444,7 +520,7 @@ load_sprites_loop:
 
 ;--------------------------------------------------------------------------
 ; Setting players' initial states 
-  
+
   ; Initial direction
   LDA #DOWN_DIRECTION
   STA P1_direction
@@ -480,7 +556,7 @@ nmi:
 
   ; Game loop
   JSR read_P1_controller  
-  JSR read_controler2  
+  JSR read_P2_controller
   JSR update_game_state
 
   RTI     
