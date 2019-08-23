@@ -26,12 +26,13 @@ SPRITE_AREA  = $0200
 ; Begin of Player's sprites in memory
 P1_SPRITE  = $0200              
 P2_SPRITE  = P1_SPRITE + 16
+CACTUSES_SPRITE_AREA = P2_SPRITE + 16
 
 ; Cooldown for gamepad reading
-READ_BUTTON_COOLDOWN = $18    ; empirical choice
+READ_BUTTON_COOLDOWN = $10    ; empirical choice
 
-SPRITES_COUNT = $20 ; just have 8 sprites for now
-PALETTE_COUNT = $20 ; 2 palettes of 16 bytes
+SPRITES_COUNT = 4 * 16 ; just have 16 sprites for now
+PALETTE_COUNT = 2 * 16 ; 2 palettes of 16 bytes
 
 ; Gamepad buttons bits
 BUTTON_A = %10000000
@@ -42,6 +43,11 @@ BUTTON_UP = %00001000
 BUTTON_DOWN = %00000100
 BUTTON_LEFT = %00000010
 BUTTON_RIGHT = %00000001
+
+SPRITE_VERT_BYTE = 0
+SPRITE_TILE_BYTE = 1
+SPRITE_ATTR_BYTE = 2
+SPRITE_HORZ_BYTE = 3
 
 ;################################################################
 ; Variables
@@ -68,6 +74,7 @@ BUTTON_RIGHT = %00000001
   P2_buttons_cooldown .dsb 1
 
   ; Players current y position for the TOP and BOTTOM tiles (diff of 1)
+  ; Pos x is constant and hardcoded in graphic_constants
   P1_top_y            .dsb 1
   P1_bottom_y         .dsb 1
   P2_top_y            .dsb 1
@@ -80,6 +87,12 @@ BUTTON_RIGHT = %00000001
   ; Pointers used in Indirect Indexed mode
   pointer_lo  .dsb 1  
   pointer_hi  .dsb 1
+
+  ; Cactuses positions array. 
+  ; These positions are from the top-left sprite of the 2x2 cactus meta-sprite
+  cactuses_pos_x     .dsb 8  ; At most 8 cactuses
+  cactuses_pos_y     .dsb 8  ; 
+  curr_cactuses_count  .dsb 1  ; keep track of current cactuses_count
    
   .ende
 ;################################################################
@@ -114,6 +127,62 @@ update_game_state:
   JSR update_P1_positions
   JSR update_P2_positions
   JSR update_players_sprites
+  ; JSR generate_new_cactuses
+  JSR update_cactuses_sprites
+  RTS
+
+;--------------------------------------------------------------------------
+; This function update the sprites' x and y position base on game state variables. 
+; ARGUMENTS:
+;   * cactuses_pos_x/cactuses_pos_y: values of x and y new positions.
+;   * curr_cactuses_count: size of above array
+; EXTRA:
+; To this functions remember the 2x2 meta-sprite's convention for the sprites' correct order:
+;    +----+----+
+;    | 0  | 1  |
+;    |4*0 |4*1 |
+;    +----+----+
+;    | 2  | 3  |
+;    |4*2 |4*3 |
+;    +----+----+
+update_cactuses_sprites:
+  
+  LDX #0      ; iterate over sprites "array", step of 16 bytes
+  LDY #0      ; iterate over cactuses positions array, step of 1 byte
+
+update_cactuses_sprites_loop:
+
+  ; Update sprites' x position
+  LDA cactuses_pos_x, Y                                                                             
+  STA CACTUSES_SPRITE_AREA + SPRITE_HORZ_BYTE, X                      
+  STA CACTUSES_SPRITE_AREA + 4*2 + SPRITE_HORZ_BYTE, X                
+  CLC       ; each sprite has 8x8 pixels, so the distance
+  ADC #8    ; between two adjacent sprites should be 8 in both axes
+  STA CACTUSES_SPRITE_AREA + 4*1 + SPRITE_HORZ_BYTE, X
+  STA CACTUSES_SPRITE_AREA + 4*3 + SPRITE_HORZ_BYTE, X
+
+  ; Update sprites' y position
+  LDA cactuses_pos_y, Y
+  STA CACTUSES_SPRITE_AREA + SPRITE_VERT_BYTE, X
+  STA CACTUSES_SPRITE_AREA + 4*1 + SPRITE_VERT_BYTE, X
+  CLC       ; each sprite has 8x8 pixels, so the distance
+  ADC #8    ; between two adjacent sprites should be 8 in both axes
+  STA CACTUSES_SPRITE_AREA + 4*2 + SPRITE_VERT_BYTE, X
+  STA CACTUSES_SPRITE_AREA + 4*3 + SPRITE_VERT_BYTE, X
+
+  TXA         ; increment 16 bytes to iterator X
+  CLC         ;
+  ADC #16     ;
+  TAX         ;
+
+  INY         ; increment 1 byte to iterator Y
+
+  ; Check loop's end condition
+  CPY curr_cactuses_count
+  BEQ update_cactuses_sprites_end
+  JMP update_cactuses_sprites_loop
+
+update_cactuses_sprites_end:
   RTS
 
 ;--------------------------------------------------------------------------
@@ -528,12 +597,24 @@ load_sprites_loop:
   STA P2_direction
   
   ; Initial position
-  LDA #80
+  LDA #$80
   STA P1_top_y
   STA P2_top_y
-  LDA #88
+  LDA #$88
   STA P1_bottom_y
   STA P2_bottom_y
+
+  ; TODO: erase this hardcoded cactuses
+  LDA #$50
+  STA cactuses_pos_x
+  STA cactuses_pos_y
+
+  LDA #$80
+  STA cactuses_pos_x + 1
+  STA cactuses_pos_y + 1
+
+  LDA #2
+  STA curr_cactuses_count
 
 ;--------------------------------------------------------------------------
 ; Set some configuration flags to CPU

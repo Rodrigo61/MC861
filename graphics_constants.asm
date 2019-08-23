@@ -3,19 +3,31 @@ palette:
   .db $22,$1C,$15,$14,  $22,$02,$38,$3C,  $22,$1C,$15,$14,  $22,$02,$38,$3C   ;;sprite palette
 
 sprites:
-      ;vert tile attr horiz
+  ;vert tile attr horiz
   
+  ; Players' sprites. Only vertical byte should change during the game
   ; Player 1
-  .db $80, $32, $00, $10   ;sprite 0
-  .db $80, $33, $00, $18   ;sprite 1
-  .db $88, $34, $00, $10   ;sprite 2
-  .db $88, $35, $00, $18   ;sprite 3
-
+  .db $00, $32, $00, $10   
+  .db $00, $33, $00, $18   
+  .db $00, $34, $00, $10   
+  .db $00, $35, $00, $18   
   ; Player 2
-  .db $80, $32, $40, $E8   ;sprite 0
-  .db $80, $33, $40, $E0   ;sprite 1
-  .db $88, $34, $40, $E8   ;sprite 2
-  .db $88, $35, $40, $E0   ;sprite 3
+  .db $00, $32, $40, $E8   
+  .db $00, $33, $40, $E0   
+  .db $00, $34, $40, $E8   
+  .db $00, $35, $40, $E0  
+
+  ; Cactus' sprites. Both x and y positions should change during the game
+  ; Cactus 1
+  .db $00, $22, $40, $00   
+  .db $00, $22, $40, $00   
+  .db $00, $22, $40, $00   
+  .db $00, $22, $40, $00   
+  ; Cactus 2
+  .db $80, $22, $40, $80   
+  .db $80, $22, $40, $88   
+  .db $88, $22, $40, $80   
+  .db $88, $22, $40, $88   
 
   .org $E100
 background:
