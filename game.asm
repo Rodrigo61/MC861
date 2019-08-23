@@ -16,23 +16,26 @@ LEFTWALL       = $04
 P1_X           = $08    
 P2_X           = $F0    
 
-; Used to define sprite current direction 
+; Used to define players' current direction 
 UP_DIRECTION = 0
 DOWN_DIRECTION = 1
 
-; Sprite memory area in CPU to DMA usage
+; Sprites' memory area in CPU to DMA usage
 SPRITE_AREA  = $0200    
 
-; Begin of Player's sprites in memory
+; Sprites' memory mapping
 P1_SPRITE  = $0200              
 P2_SPRITE  = P1_SPRITE + 16
 CACTUSES_SPRITE_AREA = P2_SPRITE + 16
 
-; Cooldown for gamepad reading
-READ_BUTTON_COOLDOWN = $10    ; empirical choice
+SPRITES_COUNT = (MAX_CACTUSES_COUNT + 2) * 16 ; # of cactuses + 2 players, each one uses 4 sprites (16B)
+PALETTE_COUNT = 2 * 16 ; 2 palettes of 16B
 
-SPRITES_COUNT = 4 * 16 ; just have 16 sprites for now
-PALETTE_COUNT = 2 * 16 ; 2 palettes of 16 bytes
+; All sprites use 4 bytes in the following order (VERTical pos, TILE number, ATTRIbutes, HORZintol pos)
+SPRITE_VERT_BYTE = 0
+SPRITE_TILE_BYTE = 1
+SPRITE_ATTR_BYTE = 2
+SPRITE_HORZ_BYTE = 3
 
 ; Gamepad buttons bits
 BUTTON_A = %10000000
@@ -44,10 +47,14 @@ BUTTON_DOWN = %00000100
 BUTTON_LEFT = %00000010
 BUTTON_RIGHT = %00000001
 
-SPRITE_VERT_BYTE = 0
-SPRITE_TILE_BYTE = 1
-SPRITE_ATTR_BYTE = 2
-SPRITE_HORZ_BYTE = 3
+; Cooldown for gamepad reading
+READ_BUTTON_COOLDOWN = $10    ; empirical choice
+
+; Constants about cactuses generation behavior
+MAX_CACTUSES_COUNT = 8
+CACTUSES_MIN_Y_DISTANCE = 16
+
+RANDOM_SEED		= $EB
 
 ;################################################################
 ; Variables
@@ -92,7 +99,14 @@ SPRITE_HORZ_BYTE = 3
   ; These positions are from the top-left sprite of the 2x2 cactus meta-sprite
   cactuses_pos_x     .dsb 8  ; At most 8 cactuses
   cactuses_pos_y     .dsb 8  ; 
-  curr_cactuses_count  .dsb 1  ; keep track of current cactuses_count
+  
+  curr_cactuses_count  .dsb 1       ; keep track of current cactuses_count
+
+  ; Variables used by gen_random_byte_within_range and gen_random_byte functions
+  random_min  .dsb 1      ; arguments to gen_random_byte_within_range function
+  random_max  .dsb 1      ;
+  random_var  .dsb 1      ; return of both functions
+  random_mod  .dsb 1
    
   .ende
 ;################################################################
@@ -127,13 +141,83 @@ update_game_state:
   JSR update_P1_positions
   JSR update_P2_positions
   JSR update_players_sprites
-  ; JSR generate_new_cactuses
+  JSR generate_cactuses
   JSR update_cactuses_sprites
   RTS
 
 ;--------------------------------------------------------------------------
+; This function generates new cactuses if the current cactuses count is lower
+; then 8. This function avoids creating a new cactus with absolute vertical distance
+; lower than CACTUSES_MIN_Y_DISTANCE from a existent cactus.
+; USES:
+;   * curr_cactuses_count: to avoid creating more than the MAX_CACTUSES_COUNT limit
+;   * random_min/random_max: as range gen a random number
+generate_cactuses:
+  
+  ; If curr_cactuses_count < MAX_CACTUSES_COUNT -> NO-OP
+  LDA curr_cactuses_count
+  CMP #MAX_CACTUSES_COUNT
+  BEQ generate_cactuses_end
+
+  ; TODO: Add a cooldown check
+
+  ; Set range to call get_random_byte_within_range function
+  LDA #$40
+  STA random_min
+  LDA #$70
+  STA random_max
+
+generate_random_y_pos:
+  JSR gen_random_byte_within_range
+  
+  ; Try to verify is the generated Y is valid by calculating the absolute vertical distance
+  ; with all other existents cactuses
+  
+  LDX #0  ; cactuses_pos_y iterator
+
+generate_cactuses_loop:
+  ; Check loop condition
+  CPX curr_cactuses_count
+  BEQ found_valid_y     
+  
+  LDA cactuses_pos_y, X
+  SEC
+  SBC #CACTUSES_MIN_Y_DISTANCE
+  CMP random_var
+  BCS generate_cactuses_loop_step   ;  Y <= Y' - MIN_DISTANCE -> valid Y
+
+  LDA cactuses_pos_y, X
+  CLC
+  ADC #CACTUSES_MIN_Y_DISTANCE
+  CMP random_var
+  BCC generate_cactuses_loop_step   ;  Y > Y' + MIN_DISTANCE -> valid Y
+
+  ; Invalid Y, have to generate a new one
+  JMP generate_random_y_pos
+
+generate_cactuses_loop_step:
+  INX
+  JMP generate_cactuses_loop
+
+found_valid_y:
+  ; Store the valid y to the new cactus
+  LDA random_var
+  LDX curr_cactuses_count
+  STA cactuses_pos_y, X       
+
+  ; Generate and store a valid X to the new cactus
+  JSR gen_random_byte_within_range
+  LDA random_var
+  STA cactuses_pos_x, X
+
+  INC curr_cactuses_count       
+
+generate_cactuses_end:
+  RTS
+
+;--------------------------------------------------------------------------
 ; This function update the sprites' x and y position base on game state variables. 
-; ARGUMENTS:
+; USES:
 ;   * cactuses_pos_x/cactuses_pos_y: values of x and y new positions.
 ;   * curr_cactuses_count: size of above array
 ; EXTRA:
@@ -147,8 +231,8 @@ update_game_state:
 ;    +----+----+
 update_cactuses_sprites:
   
-  LDX #0      ; iterate over sprites "array", step of 16 bytes
-  LDY #0      ; iterate over cactuses positions array, step of 1 byte
+  LDX #0      ; iterate over sprites "array", step of 16B
+  LDY #0      ; iterate over cactuses positions array, step of 1B
 
 update_cactuses_sprites_loop:
 
@@ -170,12 +254,12 @@ update_cactuses_sprites_loop:
   STA CACTUSES_SPRITE_AREA + 4*2 + SPRITE_VERT_BYTE, X
   STA CACTUSES_SPRITE_AREA + 4*3 + SPRITE_VERT_BYTE, X
 
-  TXA         ; increment 16 bytes to iterator X
+  TXA         ; increment 16B to iterator X
   CLC         ;
   ADC #16     ;
   TAX         ;
 
-  INY         ; increment 1 byte to iterator Y
+  INY         ; increment 1B to iterator Y
 
   ; Check loop's end condition
   CPY curr_cactuses_count
@@ -429,13 +513,13 @@ clean_PPU:
   RTS
 
 ;--------------------------------------------------------------------------
-; This function starts the DMA transfer, which copies from $0200 to $0300 (256 bytes)
+; This function starts the DMA transfer, which copies from $0200 to $0300 (256B)
 ; from CPU to PPU's sprite memory
 dma_transfer:
   LDA #$00
-  STA $2003       ; (TARGET) dma will copy 256 bytes starting from address $00 of PPU's sprite memory
+  STA $2003       ; (TARGET) dma will copy 256B starting from address $00 of PPU's sprite memory
   LDA #$02
-  STA $4014       ; (SOURCE) dma will copy the next 256 byte starting from addres $0200 of CPU's memory
+  STA $4014       ; (SOURCE) dma will copy the next 256B starting from addres $0200 of CPU's memory
   RTS
 
 ;--------------------------------------------------------------------------
@@ -492,6 +576,53 @@ end_P2_controller_handler:
   STA P2_buttons
   RTS
   
+
+;--------------------------------------------------------------------------
+; This function generates a pseudo-random number within a range (inclusive)
+; USES:
+;   * random_min
+;   * random_max
+; RETURNS
+;   * random_var
+gen_random_byte_within_range:
+	JSR gen_random_byte
+  
+  LDA random_max
+  SEC
+  SBC random_min
+  CLC
+  ADC #1
+  STA random_mod
+
+  LDA random_var
+module_loop:
+  CMP random_mod
+  BCC module_loop_end
+
+  SEC
+  SBC random_mod
+  JMP module_loop
+
+module_loop_end:
+  CLC
+  ADC random_min
+  STA random_var
+  
+  RTS
+
+;--------------------------------------------------------------------------
+; No arguments. ***Uses only register A***.
+; Returns in register A a pseudo-random number (not too random, very simple).
+gen_random_byte:
+	lda random_var
+	asl A
+	asl A
+	clc
+	adc random_var
+	clc
+	adc #03
+	sta random_var
+	rts
 ;################################################################
 ; RESET
 ;################################################################
@@ -604,17 +735,9 @@ load_sprites_loop:
   STA P1_bottom_y
   STA P2_bottom_y
 
-  ; TODO: erase this hardcoded cactuses
-  LDA #$50
-  STA cactuses_pos_x
-  STA cactuses_pos_y
-
-  LDA #$80
-  STA cactuses_pos_x + 1
-  STA cactuses_pos_y + 1
-
-  LDA #2
-  STA curr_cactuses_count
+  ; Initial random_var value
+  lda #RANDOM_SEED
+	sta random_var
 
 ;--------------------------------------------------------------------------
 ; Set some configuration flags to CPU
