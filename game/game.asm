@@ -606,7 +606,7 @@ read_controller2_loop:
 update_sprites:
 	lda bullet1_y
 	sta sprite_bullet1 + 0
-	lda #$75
+	lda #$03
 	sta sprite_bullet1 + 1
 	lda #$00
 	sta sprite_bullet1 + 2
@@ -615,7 +615,7 @@ update_sprites:
 
 	lda bullet2_y
 	sta sprite_bullet2 + 0
-	lda #$75
+	lda #$03
 	sta sprite_bullet2 + 1
 	lda #$01
 	sta sprite_bullet2 + 2
@@ -627,11 +627,24 @@ update_sprites_barrel_loop:			; Shows all barrels. Will need to be changed when 
 	cpx #64
 	beq update_sprites_barrel_loop_end
 
-	lda #$80
+	txa
+	lsr a
+	lsr a
+	lsr a
+	bcc update_sprites_barrel_is_even
+	bcs update_sprites_barrel_is_odd
+update_sprites_barrel_is_even:
+	lda #$01
 	sta barrels + 1, x
 	lda #$00
 	sta barrels + 2, x
-
+	jmp update_sprites_barrel_end_draw
+update_sprites_barrel_is_odd:	
+	lda #$11
+	sta barrels + 1, x
+	lda #$00
+	sta barrels + 2, x
+update_sprites_barrel_end_draw:
 	inx
 	inx
 	inx
@@ -645,11 +658,24 @@ update_sprites_cactus_loop:			; Shows all cactuses. Will need to be changed when
 	cpx #64
 	beq update_sprites_cactus_loop_end
 
-	lda #$80
+	txa
+	lsr a
+	lsr a
+	lsr a
+	bcc update_sprites_cactus_is_even
+	bcs update_sprites_cactus_is_odd
+update_sprites_cactus_is_even:
+	lda #$00
 	sta cactuses + 1, x
-	lda #$01
+	lda #$00
 	sta cactuses + 2, x
-
+	jmp update_sprites_cactus_end_draw
+update_sprites_cactus_is_odd:	
+	lda #$10
+	sta cactuses + 1, x
+	lda #$00
+	sta cactuses + 2, x
+update_sprites_cactus_end_draw:
 	inx
 	inx
 	inx
@@ -665,8 +691,8 @@ update_sprites_cactus_loop_end:
 	
 	.org $E000
 palette:
-	.db $0F,$31,$32,$33,$0F,$35,$36,$37,$0F,$39,$3A,$3B,$0F,$3D,$3E,$0F
-	.db $0F,$1C,$15,$14,$0F,$02,$38,$3C,$0F,$1C,$15,$14,$0F,$02,$38,$3C
+	.db $22,$16,$27,$18,$0F,$35,$36,$37,$0F,$39,$3A,$3B,$0F,$3D,$3E,$0F
+	.db $22,$16,$27,$18,$0F,$02,$38,$3C,$0F,$1C,$15,$14,$0F,$02,$38,$3C
 
 ; Movement logic:
 ;
@@ -712,4 +738,4 @@ delta_y_direction:
 ; CHR-ROM bank
 ;----------------------------------------------------------------
 
-	.incbin "mario.chr"   ;includes 8KB graphics file from SMB1
+	.incbin "sprite_sheet.chr"   ;includes 8KB graphics file from SMB1
