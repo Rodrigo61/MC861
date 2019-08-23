@@ -13,6 +13,7 @@ LEFT_WALL       = $08
 CENTER_SCREEN	= $80
 
 OFFSCREEN		= $FE	; Sprites offscreen will be placed in position (OFFSCREEN, OFFSCREEN)
+RANDOM_SEED		= $EB
 
 ;----------------------------------------------------------------
 ; variables
@@ -37,6 +38,9 @@ bullet2:
 	bullet2_direction:	.dsb 1
 	bullet2_slowed:		.dsb 1
 
+	random_var:			.dsb 1
+	tmp_var:			.dsb 1
+
 	.ende
 
 ;----------------------------------------------------------------
@@ -50,6 +54,8 @@ sprite_bullet1: .dsb 4
 sprite_bullet2: .dsb 4
 
 barrels: 		.dsb 64
+
+cactuses: 		.dsb 64
 
 	.ende
 
@@ -122,7 +128,7 @@ load_palettes_loop:
 	sta bullet1_x
 	lda #CENTER_SCREEN
 	sta bullet1_y
-	lda #7
+	lda #0
 	sta bullet1_direction
 	lda #0
 	sta bullet1_slowed
@@ -131,30 +137,53 @@ load_palettes_loop:
 	sta bullet2_x
 	lda #CENTER_SCREEN
 	sta bullet2_y
-	lda #9
+	lda #16
 	sta bullet2_direction
 	lda #0
 	sta bullet2_slowed
 
-	lda #CENTER_SCREEN - 30	; Spawning a barrel for test purposes.
+	lda #CENTER_SCREEN		; Spawning a barrel for test purposes.
 	sta barrels + 0 + 0
-	lda #CENTER_SCREEN - 36
+	lda #CENTER_SCREEN - 70
 	sta barrels + 3 + 0
 
-	lda #CENTER_SCREEN - 30 + 8
+	lda #CENTER_SCREEN + 8
 	sta barrels + 0 + 4
-	lda #CENTER_SCREEN - 36
+	lda #CENTER_SCREEN - 70
 	sta barrels + 3 + 4
 
 	lda #CENTER_SCREEN		; Spawning a barrel for test purposes.
 	sta barrels + 0 + 8
-	lda #CENTER_SCREEN - 8
+	lda #CENTER_SCREEN + 70
 	sta barrels + 3 + 8
 
 	lda #CENTER_SCREEN + 8
 	sta barrels + 0 + 12
-	lda #CENTER_SCREEN - 8
+	lda #CENTER_SCREEN + 70
 	sta barrels + 3 + 12
+
+	lda #CENTER_SCREEN		; Spawning a cactus for test purposes.
+	sta cactuses + 0 + 0
+	lda #CENTER_SCREEN - 20
+	sta cactuses + 3 + 0
+
+	lda #CENTER_SCREEN + 8
+	sta cactuses + 0 + 4
+	lda #CENTER_SCREEN - 20
+	sta cactuses + 3 + 4
+
+	lda #CENTER_SCREEN		; Spawning a cactus for test purposes.
+	sta cactuses + 0 + 8
+	lda #CENTER_SCREEN + 20 
+	sta cactuses + 3 + 8
+
+	lda #CENTER_SCREEN + 8
+	sta cactuses + 0 + 12
+	lda #CENTER_SCREEN + 20
+	sta cactuses + 3 + 12
+
+	lda #RANDOM_SEED
+	sta random_var
 
 	jsr update_sprites		; Update the sprites for the first screen.
 
@@ -184,6 +213,12 @@ game_engine:
 
 	jsr update_frame_counter
 
+	lda frame_counter		; Auto-reset after 256 frames. TODO: REMOVE THESE 5 LINES OF CODE.
+	cmp #0
+	bne	skip_auto_reset
+	jmp reset
+skip_auto_reset:
+
 checking_collisions:
 
 	jsr check_side_collisions
@@ -191,6 +226,8 @@ checking_collisions:
 	jsr check_bot_collisions
 
 	jsr check_barrel_collisions
+
+	jsr check_cactus_collisions
 
 collisions_done:
 
@@ -208,6 +245,20 @@ game_engine_done:
 ;----------------------------------------------------------------
 ; functions
 ;----------------------------------------------------------------
+
+; Function check_side_collisions
+; No arguments. ***Uses only register A***.
+; Returns in register A a pseudo-random number (not too random, very simple).
+gen_random_byte:
+	lda random_var
+	asl A
+	asl A
+	clc
+	adc random_var
+	clc
+	adc #03
+	sta random_var
+	rts
 
 ; Function check_side_collisions
 ; No arguments and no return.
@@ -374,6 +425,84 @@ check_barrel_collisions_outer_loop_ok:
 check_barrel_collisions_done:
 	rts
 
+; Function check_cactus_collisions
+; No arguments and no return.
+; Checks collisions with cactuses for both bullets and deals with the effects.
+check_cactus_collisions:
+	ldx #$0
+check_cactus_collisions_outer_loop:		; loop over the two bullets which are at positions bullets and bullets + 4 in memory.
+	cpx #8
+	beq check_cactus_collisions_done
+
+	ldy #$0
+check_cactus_collisions_inner_loop:		; Loop over the eight cactuses in positions cactuses, cactuses + 8, ... cactuses + 56 in memory.
+	cpy #64
+	beq check_cactus_collisions_outer_loop_ok
+
+	lda cactuses + 0, Y		; Cactus y_min
+	sec
+	sbc #1
+	cmp bullets + 1, X		; Compare with bullet y.
+	bcs	check_cactus_collisions_inner_loop_ok	; y_min - 1 >= bullet_y, so no collision
+
+	lda cactuses + 0, Y		; Cactus y_min
+	clc
+	adc #7					; Cactus y_max now.
+	cmp bullets + 1, X		; Compare with bullet y.
+	bcc	check_cactus_collisions_inner_loop_ok	; y_max < bullet_y, so no collision
+	
+	lda cactuses + 3, Y		; Cactus x_min
+	sec
+	sbc #1
+	cmp bullets + 0, X		; Compare with bullet x.
+	bcs	check_cactus_collisions_inner_loop_ok	; x_min - 1 >= bullet_x, so no collision
+
+	lda cactuses + 3, Y		; Cactus x_min
+	clc
+	adc #7					; Cactus x_max now.
+	cmp bullets + 0, X		; Compare with bullet x.
+	bcc	check_cactus_collisions_inner_loop_ok	; x_max < bullet_x, so no collision
+
+check_cactus_collisions_inner_loop_found:
+	; Bullet changes direction.
+
+	jsr gen_random_byte
+	and #%00000111	; Random number in [0, 7].
+	cmp #4			; Direction offset of 4 would be no change, so don't allow it.
+	bne check_cactus_collisions_direction_offset
+	lda #8
+check_cactus_collisions_direction_offset:
+	sta tmp_var
+
+	lda bullets + 2, X	; Bullet direction.		
+	clc
+	adc #32 - 4			; Add 28 equivalent to subtract 4.
+	clc
+	adc tmp_var
+	and #%00011111
+	sta bullets + 2, X	; Effect of this is that the bullet's direction win change by one of [-4,-3,-2,-1,1,2,3,4].
+
+	lda #0
+	sta bullets + 3, X	; Bullet is now not slowed.
+
+check_cactus_collisions_inner_loop_ok:
+	tya
+	clc
+	adc #8
+	tay
+	jmp check_cactus_collisions_inner_loop
+
+check_cactus_collisions_outer_loop_ok:
+	inx
+	inx
+	inx
+	inx
+	jmp check_cactus_collisions_outer_loop
+
+check_cactus_collisions_done:
+	rts
+
+
 ; Function update_frame_counter.
 ; Increments the frame counter by one.
 update_frame_counter:
@@ -509,6 +638,24 @@ update_sprites_barrel_loop:			; Shows all barrels. Will need to be changed when 
 	inx
 	jmp update_sprites_barrel_loop
 update_sprites_barrel_loop_end:
+
+
+	ldx #$0
+update_sprites_cactus_loop:			; Shows all cactuses. Will need to be changed when cactuses have two different sprites.
+	cpx #64
+	beq update_sprites_cactus_loop_end
+
+	lda #$80
+	sta cactuses + 1, x
+	lda #$01
+	sta cactuses + 2, x
+
+	inx
+	inx
+	inx
+	inx
+	jmp update_sprites_cactus_loop
+update_sprites_cactus_loop_end:
 
 	rts
 
