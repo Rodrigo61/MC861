@@ -4,60 +4,66 @@ palette:
 
 sprites:
   ;vert tile attr horiz
-  
+  ; Bullets' sprites. Both x and y positions should change during the game
+  ; Bullet 1
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  ; Bullet 2
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+
+
   ; Players' sprites. Only vertical byte should change during the game
   ; Player 1
-  .db $00, $32, $00, $10   
-  .db $00, $33, $00, $18   
-  .db $00, $34, $00, $10   
-  .db $00, $35, $00, $18   
+  .db OFFSCREEN, $32, $00, $10   
+  .db OFFSCREEN, $33, $00, $18   
+  .db OFFSCREEN, $34, $00, $10   
+  .db OFFSCREEN, $35, $00, $18   
   ; Player 2
-  .db $00, $32, $40, $E8   
-  .db $00, $33, $40, $E0   
-  .db $00, $34, $40, $E8   
-  .db $00, $35, $40, $E0  
+  .db OFFSCREEN, $32, $40, $E8   
+  .db OFFSCREEN, $33, $40, $E0   
+  .db OFFSCREEN, $34, $40, $E8   
+  .db OFFSCREEN, $35, $40, $E0  
 
   ; Cactus' sprites. Both x and y positions should change during the game
   ; Cactus 1
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
   ; Cactus 2
-  .db $80, $22, $40, $80   
-  .db $80, $22, $40, $88   
-  .db $88, $22, $40, $80   
-  .db $88, $22, $40, $88   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN  
   ; Cactus 3
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
   ; Cactus 4
-  .db $80, $22, $40, $80   
-  .db $80, $22, $40, $88   
-  .db $88, $22, $40, $80   
-  .db $88, $22, $40, $88   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN  
   ; Cactus 5
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
   ; Cactus 6
-  .db $80, $22, $40, $80   
-  .db $80, $22, $40, $88   
-  .db $88, $22, $40, $80   
-  .db $88, $22, $40, $88   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN  
   ; Cactus 7
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
-  .db $00, $22, $40, $00   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
   ; Cactus 8
-  .db $80, $22, $40, $80   
-  .db $80, $22, $40, $88   
-  .db $88, $22, $40, $80   
-  .db $88, $22, $40, $88   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN  
 
   .org $E100
 background:

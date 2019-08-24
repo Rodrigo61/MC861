@@ -6,11 +6,13 @@ Code:
 PRG_COUNT = 1 ;1 = 16KB, 2 = 32KB
 MIRRORING = %0001 ;%0000 = horizontal, %0001 = vertical, %1000 = four-screen
 
-; Wall's limits
-RIGHTWALL      = $F4    
-TOPWALL        = $20    
-BOTTOMWALL     = $E0    
-LEFTWALL       = $04    
+RIGHT_WALL      = $F0	; When a bullet reaches one of these, handle colision.
+TOP_WALL        = $20
+BOTTOM_WALL     = $D0
+LEFT_WALL       = $08  
+
+CENTER_SCREEN	= $80
+OFFSCREEN		= $FE	; Sprites offscreen will be placed in position (OFFSCREEN, OFFSCREEN)
   
 ; Players constant X position
 P1_X           = $08    
@@ -20,15 +22,7 @@ P2_X           = $F0
 UP_DIRECTION = 0
 DOWN_DIRECTION = 1
 
-; Sprites' memory area in CPU to DMA usage
-SPRITE_AREA  = $0200    
-
-; Sprites' memory mapping
-P1_SPRITE  = $0200              
-P2_SPRITE  = P1_SPRITE + 16
-CACTUSES_SPRITE_AREA = P2_SPRITE + 16
-
-SPRITES_COUNT = (MAX_CACTUSES_COUNT + 2) * 16 ; # of cactuses + 2 players, each one uses 4 sprites (16B)
+SPRITES_COUNT = (MAX_CACTUSES_COUNT + 2) * 4 + 2 ; # of cactuses + 2 players, each one uses 4 sprites (16B), + 2 sprites for bullets
 PALETTE_COUNT = 2 * 16 ; 2 palettes of 16B
 
 ; All sprites use 4 bytes in the following order (VERTical pos, TILE number, ATTRIbutes, HORZintol pos)
@@ -62,14 +56,22 @@ RANDOM_SEED		= $EB
 
   .enum $0000
 
-  ; Shots' (x,y) positions
-  shot1_x      .dsb 1  
-  shot1_y      .dsb 1  
-  shot2_x      .dsb 1  
-  shot2_y      .dsb 1  
-  
-  ; Shot speed in both axes
-  shot_speed .dsb 1
+	frame_counter: 		.dsb 1	; Counter that increments each frame (obviously overflows).
+	buttons1:			.dsb 1	; Player 1 gamepad buttons, one bit per button.
+	buttons2:			.dsb 1  ; Player 2 gamepad buttons, one bit per button.
+
+bullets:
+bullet1:						; If the bullet is not currently on screen, x and y will be equal to OFFSCREEN.
+	bullet1_x:			.dsb 1	; Horizontal position of bullet.
+	bullet1_y:			.dsb 1	; Vertical position of bullet.
+	bullet1_direction:	.dsb 1	; Bullet direction from 0 to 31.
+	bullet1_slowed:		.dsb 1	; 1 if bullet is currently slowed and 0 otherwise.
+
+bullet2:
+	bullet2_x: 			.dsb 1
+	bullet2_y:			.dsb 1
+	bullet2_direction:	.dsb 1
+	bullet2_slowed:		.dsb 1
 
   ; Gamepad buttons, one bit per button in the following order: A, B, Select, Start, Up, Down, Left, Right
   P1_buttons   .dsb 1  
@@ -90,25 +92,46 @@ RANDOM_SEED		= $EB
   ; Players current direction
   P1_direction .dsb 1
   P2_direction .dsb 1
-  
+
   ; Pointers used in Indirect Indexed mode
   pointer_lo  .dsb 1  
   pointer_hi  .dsb 1
 
-  ; Cactuses positions array. 
-  ; These positions are from the top-left sprite of the 2x2 cactus meta-sprite
-  cactuses_pos_x     .dsb 8  ; At most 8 cactuses
-  cactuses_pos_y     .dsb 8  ; 
-  
   curr_cactuses_count  .dsb 1       ; keep track of current cactuses_count
 
   ; Variables used by gen_random_byte_within_range and gen_random_byte functions
   random_min  .dsb 1      ; arguments to gen_random_byte_within_range function
   random_max  .dsb 1      ;
-  random_var  .dsb 1      ; return of both functions
+  bounded_random_var .dsb 1 ; return of gen_random_byte_within_range function
+  random_var  .dsb 1      
   random_mod  .dsb 1
+
+  tmp_var:			.dsb 1
    
   .ende
+
+;----------------------------------------------------------------
+; sprites
+;----------------------------------------------------------------
+
+	.enum $0200
+
+sprite_area:
+
+sprite_bullet1: .dsb 1 * 4
+
+sprite_bullet2: .dsb 1 * 4
+
+sprite_player1: .dsb 4 * 4
+
+sprite_player2: .dsb 4 * 4
+
+cactuses: 		.dsb 8 * 4 * 4
+
+barrels: 		.dsb 64
+
+
+	.ende
 ;################################################################
 ; iNES header
 ;################################################################
@@ -136,13 +159,10 @@ update_game_state:
   JSR P2_controller_handler
   JSR update_P1_direction_by_wall_collision
   JSR update_P2_direction_by_wall_collision
-  JSR update_P1_direction_by_wall_collision
-  JSR update_P2_direction_by_wall_collision
   JSR update_P1_positions
   JSR update_P2_positions
   JSR update_players_sprites
   JSR generate_cactuses
-  JSR update_cactuses_sprites
   RTS
 
 ;--------------------------------------------------------------------------
@@ -152,74 +172,6 @@ update_game_state:
 ; USES:
 ;   * curr_cactuses_count: to avoid creating more than the MAX_CACTUSES_COUNT limit
 ;   * random_min/random_max: as range gen a random number
-generate_cactuses:
-  
-  ; If curr_cactuses_count < MAX_CACTUSES_COUNT -> NO-OP
-  LDA curr_cactuses_count
-  CMP #MAX_CACTUSES_COUNT
-  BEQ generate_cactuses_end
-
-  ; TODO: Add a cooldown check
-
-  ; Set range to call get_random_byte_within_range function
-  LDA #$40
-  STA random_min
-  LDA #$70
-  STA random_max
-
-generate_random_y_pos:
-  JSR gen_random_byte_within_range
-  
-  ; Try to verify is the generated Y is valid by calculating the absolute vertical distance
-  ; with all other existents cactuses
-  
-  LDX #0  ; cactuses_pos_y iterator
-
-generate_cactuses_loop:
-  ; Check loop condition
-  CPX curr_cactuses_count
-  BEQ found_valid_y     
-  
-  LDA cactuses_pos_y, X
-  SEC
-  SBC #CACTUSES_MIN_Y_DISTANCE
-  CMP random_var
-  BCS generate_cactuses_loop_step   ;  Y <= Y' - MIN_DISTANCE -> valid Y
-
-  LDA cactuses_pos_y, X
-  CLC
-  ADC #CACTUSES_MIN_Y_DISTANCE
-  CMP random_var
-  BCC generate_cactuses_loop_step   ;  Y > Y' + MIN_DISTANCE -> valid Y
-
-  ; Invalid Y, have to generate a new one
-  JMP generate_random_y_pos
-
-generate_cactuses_loop_step:
-  INX
-  JMP generate_cactuses_loop
-
-found_valid_y:
-  ; Store the valid y to the new cactus
-  LDA random_var
-  LDX curr_cactuses_count
-  STA cactuses_pos_y, X       
-
-  ; Generate and store a valid X to the new cactus
-  JSR gen_random_byte_within_range
-  LDA random_var
-  STA cactuses_pos_x, X
-
-  INC curr_cactuses_count       
-
-generate_cactuses_end:
-  RTS
-
-;--------------------------------------------------------------------------
-; This function update the sprites' x and y position base on game state variables. 
-; USES:
-;   * cactuses_pos_x/cactuses_pos_y: values of x and y new positions.
-;   * curr_cactuses_count: size of above array
 ; EXTRA:
 ; To this functions remember the 2x2 meta-sprite's convention for the sprites' correct order:
 ;    +----+----+
@@ -229,51 +181,94 @@ generate_cactuses_end:
 ;    | 2  | 3  |
 ;    |4*2 |4*3 |
 ;    +----+----+
-update_cactuses_sprites:
+generate_cactuses:
   
-  LDX #0      ; iterate over sprites "array", step of 16B
-  LDY #0      ; iterate over cactuses positions array, step of 1B
+  ; If curr_cactuses_count == MAX_CACTUSES_COUNT -> NO-OP
+  LDA curr_cactuses_count
+  CMP #MAX_CACTUSES_COUNT
+  BEQ generate_cactuses_end
 
-update_cactuses_sprites_loop:
+  ; TODO: Add a cooldown check
 
-  ; Update sprites' x position
-  LDA cactuses_pos_x, Y                                                                             
-  STA CACTUSES_SPRITE_AREA + SPRITE_HORZ_BYTE, X                      
-  STA CACTUSES_SPRITE_AREA + 4*2 + SPRITE_HORZ_BYTE, X                
-  CLC       ; each sprite has 8x8 pixels, so the distance
-  ADC #8    ; between two adjacent sprites should be 8 in both axes
-  STA CACTUSES_SPRITE_AREA + 4*1 + SPRITE_HORZ_BYTE, X
-  STA CACTUSES_SPRITE_AREA + 4*3 + SPRITE_HORZ_BYTE, X
+  ; Set range to call get_random_byte_within_range function
+  LDA #$10
+  STA random_min
+  LDA #$E0
+  STA random_max
 
-  ; Update sprites' y position
-  LDA cactuses_pos_y, Y
-  STA CACTUSES_SPRITE_AREA + SPRITE_VERT_BYTE, X
-  STA CACTUSES_SPRITE_AREA + 4*1 + SPRITE_VERT_BYTE, X
-  CLC       ; each sprite has 8x8 pixels, so the distance
-  ADC #8    ; between two adjacent sprites should be 8 in both axes
-  STA CACTUSES_SPRITE_AREA + 4*2 + SPRITE_VERT_BYTE, X
-  STA CACTUSES_SPRITE_AREA + 4*3 + SPRITE_VERT_BYTE, X
+generate_random_y_pos:
+  JSR gen_random_byte_within_range
+  
+  ; Try to verify is the generated Y is valid by calculating the absolute vertical distance
+  ; with all other existents cactuses
+  
+  LDX #0      ; iterates over cactuses sprites "array", step of 16B
+  LDY #0      ; counts until curr_cactuses_count
 
-  TXA         ; increment 16B to iterator X
+generate_cactuses_loop:
+  ; Check loop condition
+  CPY curr_cactuses_count
+  BEQ found_valid_y     
+  
+  LDA cactuses + SPRITE_VERT_BYTE, X
+  SEC
+  SBC #CACTUSES_MIN_Y_DISTANCE
+  CMP bounded_random_var            
+  BCS generate_cactuses_loop_step   ;  Y <= Y' - MIN_DISTANCE -> valid Y
+
+  LDA cactuses + SPRITE_VERT_BYTE, X
+  CLC
+  ADC #CACTUSES_MIN_Y_DISTANCE
+  CMP bounded_random_var
+  BCC generate_cactuses_loop_step   ;  Y > Y' + MIN_DISTANCE -> valid Y
+
+  ; Invalid Y, have to generate a new one
+  JMP generate_random_y_pos
+
+generate_cactuses_loop_step:
+  TYX         ; increment 16B to iterator X
   CLC         ;
   ADC #16     ;
   TAX         ;
 
   INY         ; increment 1B to iterator Y
+  JMP generate_cactuses_loop
 
-  ; Check loop's end condition
-  CPY curr_cactuses_count
-  BEQ update_cactuses_sprites_end
-  JMP update_cactuses_sprites_loop
+found_valid_y:
+  ; Store the valid y to the new cactus, uses X value obtained from above loop
+  LDA bounded_random_var
+  STA cactuses + SPRITE_VERT_BYTE, X       
+  STA cactuses + 4 * 1 + SPRITE_VERT_BYTE, X
+  CLC
+  ADC #8
+  STA cactuses + 4 * 2 +SPRITE_VERT_BYTE, X       
+  STA cactuses + 4 * 3 + SPRITE_VERT_BYTE, X
 
-update_cactuses_sprites_end:
+  ; Generate and store a valid X to the new cactus
+  LDA #$30
+  STA random_min
+  LDA #$C0
+  STA random_max
+  JSR gen_random_byte_within_range
+  LDA bounded_random_var
+  STA cactuses + SPRITE_VERT_BYTE, X       
+  STA cactuses + 4 * 2 + SPRITE_VERT_BYTE, X
+  CLC
+  ADC #8
+  STA cactuses + 4 * 1 +SPRITE_VERT_BYTE, X       
+  STA cactuses + 4 * 3 + SPRITE_VERT_BYTE, X
+
+  INC curr_cactuses_count       
+
+generate_cactuses_end:
   RTS
+
 
 ;--------------------------------------------------------------------------
 update_P1_direction_by_wall_collision:
   ; Check for direction and y position
   LDA P1_bottom_y
-  CMP #BOTTOMWALL
+  CMP #BOTTOM_WALL
   BNE check_top_wall_collision_P1
   LDA P1_direction
   CMP #DOWN_DIRECTION
@@ -288,7 +283,7 @@ update_P1_direction_by_wall_collision:
 check_top_wall_collision_P1: 
   ; Check for direction and y position
   LDA P1_top_y
-  CMP #TOPWALL
+  CMP #TOP_WALL
   BNE end_update_P1_direction_by_wall_collision
   LDA P1_direction
   CMP #UP_DIRECTION
@@ -307,7 +302,7 @@ update_P2_direction_by_wall_collision:
 
   ; Check for direction and y position
   LDA P2_bottom_y
-  CMP #BOTTOMWALL
+  CMP #BOTTOM_WALL
   BNE check_top_wall_collision_P2
   LDA P2_direction
   CMP #DOWN_DIRECTION
@@ -322,7 +317,7 @@ update_P2_direction_by_wall_collision:
 check_top_wall_collision_P2:
   ; Check for direction and y position
   LDA P2_top_y
-  CMP #TOPWALL
+  CMP #TOP_WALL
   BNE end_update_P2_direction_by_wall_collision
   LDA P2_direction
   CMP #UP_DIRECTION
@@ -381,19 +376,19 @@ update_players_sprites:
   
   ; Update P1 sprite
   LDA P1_top_y
-  STA P1_SPRITE
-  STA P1_SPRITE + 4
+  STA sprite_player1
+  STA sprite_player1 + 4
   LDA P1_bottom_y
-  STA P1_SPRITE + 8
-  STA P1_SPRITE + 12
+  STA sprite_player1 + 8
+  STA sprite_player1 + 12
 
   ; Update P2 sprite
   LDA P2_top_y
-  STA P2_SPRITE
-  STA P2_SPRITE + 4
+  STA sprite_player2
+  STA sprite_player2 + 4
   LDA P2_bottom_y
-  STA P2_SPRITE + 8
-  STA P2_SPRITE + 12
+  STA sprite_player2 + 8
+  STA sprite_player2 + 12
  
   RTS
   
@@ -583,7 +578,9 @@ end_P2_controller_handler:
 ;   * random_min
 ;   * random_max
 ; RETURNS
-;   * random_var
+;   * random_var 
+
+; TODO NAO SUJAR O RANDOM_VAR
 gen_random_byte_within_range:
 	JSR gen_random_byte
   
@@ -606,7 +603,7 @@ module_loop:
 module_loop_end:
   CLC
   ADC random_min
-  STA random_var
+  STA bounded_random_var
   
   RTS
 
@@ -713,9 +710,9 @@ load_sprites:
   LDX #$00              
 load_sprites_loop:
   LDA sprites, x        
-  STA SPRITE_AREA, x    
+  STA sprite_area, x    
   INX                   
-  CPX #SPRITES_COUNT 
+  CPX #SPRITES_COUNT * 4
   BNE load_sprites_loop   
 
 ;--------------------------------------------------------------------------
