@@ -29,8 +29,12 @@ P2_X           = $F0
 UP_DIRECTION = 0
 DOWN_DIRECTION = 1
 
-SPRITES_COUNT = (MAX_CACTUSES_COUNT + 2) * 4 + 2 ; # of cactuses + 2 players, each one uses 4 sprites (16B), + 2 sprites for bullets
-PALETTE_COUNT = 2 * 16 ; 2 palettes of 16B
+CACTUS_META_SPRITE_SIZE = 2 * 4 ; 2 sprites of 4B
+PLAYER_META_SPRITE_SIZE = 4 * 4 ; 4 sprites of 4B
+BULLET_META_SPRITE_SIZE = 1 * 4 ; 1 sprite of 4B
+
+SPRITES_TOTAL_LEN = (2 * PLAYER_META_SPRITE_SIZE) + (MAX_CACTUSES_COUNT * CACTUS_META_SPRITE_SIZE) + (2 * BULLET_META_SPRITE_SIZE)
+PALETTE_TOTAL_LEN = 2 * 16; 2 palettes of 16B
 
 ; All sprites use 4 bytes in the following order (VERTical pos, TILE number, ATTRIbutes, HORZintol pos)
 SPRITE_VERT_BYTE = 0
@@ -126,15 +130,15 @@ bullet2:
 
 sprite_area:
 
-sprite_bullet1: .dsb 1 * 4
+sprite_bullet1: .dsb BULLET_META_SPRITE_SIZE
 
-sprite_bullet2: .dsb 1 * 4
+sprite_bullet2: .dsb BULLET_META_SPRITE_SIZE
 
-sprite_player1: .dsb 4 * 4
+sprite_player1: .dsb PLAYER_META_SPRITE_SIZE
 
-sprite_player2: .dsb 4 * 4
+sprite_player2: .dsb PLAYER_META_SPRITE_SIZE
 
-cactuses: 		.dsb 8 * 4 * 4
+cactuses: 		.dsb MAX_CACTUSES_COUNT * CACTUS_META_SPRITE_SIZE
 
 barrels: 		.dsb 64
 
@@ -181,14 +185,14 @@ update_game_state:
 ;   * curr_cactuses_count: to avoid creating more than the MAX_CACTUSES_COUNT limit
 ;   * random_min/random_max: to generate a bounded random number using get_random_byte_within_range function
 ; EXTRA:
-; To understand this function remember the 2x2 meta-sprite's convention for the sprites' correct order:
-;    +----+----+
-;    | 0  | 1  |
-;    |4*0 |4*1 |
-;    +----+----+
-;    | 2  | 3  |
-;    |4*2 |4*3 |
-;    +----+----+
+; The sprites' format of a cactus is the following:
+;    +----+
+;    | 0  |
+;    |4*0 |
+;    +----+
+;    | 1  |
+;    |4*1 |
+;    +----+
 generate_cactuses:
   
   ; If curr_cactuses_count == MAX_CACTUSES_COUNT -> NO-OP
@@ -220,7 +224,7 @@ generate_random_y_pos:
   ; Try to verify if the generated Y is valid by calculating the absolute vertical distance
   ; with all other existents cactuses
   
-  LDX #0      ; iterates over cactuses sprites "array", step of 16B
+  LDX #0      ; iterates over cactuses sprites "array", step of CACTUS_META_SPRITE_SIZE
   LDY #0      ; counts until curr_cactuses_count, step of 1B
 
 verify_other_cactuses_loop:
@@ -244,12 +248,13 @@ verify_other_cactuses_loop:
   JMP generate_random_y_pos
 
 verify_other_cactuses_loop_step:
-  TXA         ; increment 16B to iterator X
-  CLC         ;
-  ADC #16     ;
-  TAX         ;
+  ; increment CACTUS_META_SPRITE_SIZE to iterator X
+  TXA         
+  CLC                             
+  ADC #CACTUS_META_SPRITE_SIZE     
+  TAX                              
 
-  INY         ; increment 1B to iterator Y
+  INY ; increment 1B to iterator Y
   JMP verify_other_cactuses_loop
 
 
@@ -258,11 +263,9 @@ found_valid_y:
   ; Store the valid y to the new cactus, use X value obtained from above loop
   LDA bounded_random_var
   STA cactuses + SPRITE_VERT_BYTE, X       
-  STA cactuses + 4 * 1 + SPRITE_VERT_BYTE, X
-  CLC
-  ADC #8
-  STA cactuses + 4 * 2 +SPRITE_VERT_BYTE, X       
-  STA cactuses + 4 * 3 + SPRITE_VERT_BYTE, X
+  CLC         ; remember that each sprite is a 8x8 pixels tile
+  ADC #8      ;
+  STA cactuses + 4 * 1 +SPRITE_VERT_BYTE, X       
 
   ; Generate and store a valid X to the new cactus
   LDA #CACTUSES_LEFT_SCREEN_LIMIT
@@ -272,11 +275,7 @@ found_valid_y:
   JSR gen_random_byte_within_range
   LDA bounded_random_var
   STA cactuses + SPRITE_HORZ_BYTE, X       
-  STA cactuses + 4 * 2 + SPRITE_HORZ_BYTE, X
-  CLC
-  ADC #8
   STA cactuses + 4 * 1 +SPRITE_HORZ_BYTE, X       
-  STA cactuses + 4 * 3 + SPRITE_HORZ_BYTE, X
 
   ; Increment cactuses count
   INC curr_cactuses_count
@@ -695,7 +694,7 @@ load_palettes_loop:
   LDA palette, x        
   STA $2007             
   INX                   
-  CPX #PALETTE_COUNT     
+  CPX #PALETTE_TOTAL_LEN
   BNE load_palettes_loop 
                          
 
@@ -731,13 +730,13 @@ load_background_inside_loop:
 
 
   ; Copy hardcoded sprites graphics from graphics_constants.asm to the DMA area
-load_sprites:
+-prites:
   LDX #$00              
 load_sprites_loop:
   LDA sprites, x        
   STA sprite_area, x    
   INX                   
-  CPX #SPRITES_COUNT * 4
+  CPX #SPRITES_TOTAL_LEN
   BNE load_sprites_loop   
 
 ;--------------------------------------------------------------------------
