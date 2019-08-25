@@ -11,6 +11,13 @@ TOP_WALL        = $20
 BOTTOM_WALL     = $D0
 LEFT_WALL       = $08  
 
+CACTUSES_TOP_SCREEN_LIMIT = $10
+CACTUSES_BOT_SCREEN_LIMIT = $D0
+CACTUSES_LEFT_SCREEN_LIMIT = $30
+CACTUSES_RIGHT_SCREEN_LIMIT = $C0
+
+GEN_CACTUSES_COOLDOWN = $A0
+
 CENTER_SCREEN	= $80
 OFFSCREEN		= $FE	; Sprites offscreen will be placed in position (OFFSCREEN, OFFSCREEN)
   
@@ -97,6 +104,7 @@ bullet2:
   pointer_lo  .dsb 1  
   pointer_hi  .dsb 1
 
+  generate_cactuses_cooldown  .dsb 1
   curr_cactuses_count  .dsb 1       ; keep track of current cactuses_count
 
   ; Variables used by gen_random_byte_within_range and gen_random_byte functions
@@ -167,13 +175,13 @@ update_game_state:
 
 ;--------------------------------------------------------------------------
 ; This function generates new cactuses if the current cactuses count is lower
-; then 8. This function avoids creating a new cactus with absolute vertical distance
-; lower than CACTUSES_MIN_Y_DISTANCE from a existent cactus.
+; then MAX_CACTUSES_COUNT. This function does not create a new cactus with 
+; absolute vertical distance lower than CACTUSES_MIN_Y_DISTANCE from a existent cactus.
 ; USES:
 ;   * curr_cactuses_count: to avoid creating more than the MAX_CACTUSES_COUNT limit
-;   * random_min/random_max: as range gen a random number
+;   * random_min/random_max: to generate a bounded random number using get_random_byte_within_range function
 ; EXTRA:
-; To this functions remember the 2x2 meta-sprite's convention for the sprites' correct order:
+; To understand this function remember the 2x2 meta-sprite's convention for the sprites' correct order:
 ;    +----+----+
 ;    | 0  | 1  |
 ;    |4*0 |4*1 |
@@ -188,54 +196,66 @@ generate_cactuses:
   CMP #MAX_CACTUSES_COUNT
   BEQ generate_cactuses_end
 
-  ; TODO: Add a cooldown check
+  ; Check if cooldown time has finished
+  LDA generate_cactuses_cooldown
+  CMP #0
+  BNE generate_cactuses_end
+
+  ; To generate Y position, it's used the get_random_byte_within_range function.
+  ; The idea of the following algorithm is to keep trying to find a new random Y position
+  ; that not violates the CACTUSES_MIN_Y_DISTANCE rule. In order to decide to weather a new Y
+  ; position is valid we check all existent cactuses and compare their Y position with the
+  ; new one. 
 
   ; Set range to call get_random_byte_within_range function
-  LDA #$10
+  LDA #CACTUSES_TOP_SCREEN_LIMIT
   STA random_min
-  LDA #$E0
+  LDA #CACTUSES_BOT_SCREEN_LIMIT
   STA random_max
 
 generate_random_y_pos:
   JSR gen_random_byte_within_range
   
-  ; Try to verify is the generated Y is valid by calculating the absolute vertical distance
+
+  ; Try to verify if the generated Y is valid by calculating the absolute vertical distance
   ; with all other existents cactuses
   
   LDX #0      ; iterates over cactuses sprites "array", step of 16B
-  LDY #0      ; counts until curr_cactuses_count
+  LDY #0      ; counts until curr_cactuses_count, step of 1B
 
-generate_cactuses_loop:
+verify_other_cactuses_loop:
   ; Check loop condition
   CPY curr_cactuses_count
   BEQ found_valid_y     
   
-  LDA cactuses + SPRITE_VERT_BYTE, X
-  SEC
-  SBC #CACTUSES_MIN_Y_DISTANCE
-  CMP bounded_random_var            
-  BCS generate_cactuses_loop_step   ;  Y <= Y' - MIN_DISTANCE -> valid Y
+  LDA cactuses + SPRITE_VERT_BYTE, X    ;
+  SEC                                   ;
+  SBC #CACTUSES_MIN_Y_DISTANCE          ;
+  CMP bounded_random_var                ;
+  BCS verify_other_cactuses_loop_step   ;  Y <= Y' - MIN_DISTANCE -> valid Y
 
-  LDA cactuses + SPRITE_VERT_BYTE, X
-  CLC
-  ADC #CACTUSES_MIN_Y_DISTANCE
-  CMP bounded_random_var
-  BCC generate_cactuses_loop_step   ;  Y > Y' + MIN_DISTANCE -> valid Y
+  LDA cactuses + SPRITE_VERT_BYTE, X    ;
+  CLC                                   ;
+  ADC #CACTUSES_MIN_Y_DISTANCE          ;
+  CMP bounded_random_var                ;
+  BCC verify_other_cactuses_loop_step   ;  Y > Y' + MIN_DISTANCE -> valid Y
 
   ; Invalid Y, have to generate a new one
   JMP generate_random_y_pos
 
-generate_cactuses_loop_step:
-  TYX         ; increment 16B to iterator X
+verify_other_cactuses_loop_step:
+  TXA         ; increment 16B to iterator X
   CLC         ;
   ADC #16     ;
   TAX         ;
 
   INY         ; increment 1B to iterator Y
-  JMP generate_cactuses_loop
+  JMP verify_other_cactuses_loop
+
 
 found_valid_y:
-  ; Store the valid y to the new cactus, uses X value obtained from above loop
+
+  ; Store the valid y to the new cactus, use X value obtained from above loop
   LDA bounded_random_var
   STA cactuses + SPRITE_VERT_BYTE, X       
   STA cactuses + 4 * 1 + SPRITE_VERT_BYTE, X
@@ -245,24 +265,29 @@ found_valid_y:
   STA cactuses + 4 * 3 + SPRITE_VERT_BYTE, X
 
   ; Generate and store a valid X to the new cactus
-  LDA #$30
+  LDA #CACTUSES_LEFT_SCREEN_LIMIT
   STA random_min
-  LDA #$C0
+  LDA #CACTUSES_RIGHT_SCREEN_LIMIT
   STA random_max
   JSR gen_random_byte_within_range
   LDA bounded_random_var
-  STA cactuses + SPRITE_VERT_BYTE, X       
-  STA cactuses + 4 * 2 + SPRITE_VERT_BYTE, X
+  STA cactuses + SPRITE_HORZ_BYTE, X       
+  STA cactuses + 4 * 2 + SPRITE_HORZ_BYTE, X
   CLC
   ADC #8
-  STA cactuses + 4 * 1 +SPRITE_VERT_BYTE, X       
-  STA cactuses + 4 * 3 + SPRITE_VERT_BYTE, X
+  STA cactuses + 4 * 1 +SPRITE_HORZ_BYTE, X       
+  STA cactuses + 4 * 3 + SPRITE_HORZ_BYTE, X
 
-  INC curr_cactuses_count       
+  ; Increment cactuses count
+  INC curr_cactuses_count
+  
+  ; Reset cooldown
+  LDA #GEN_CACTUSES_COOLDOWN
+  STA generate_cactuses_cooldown
 
 generate_cactuses_end:
+  DEC generate_cactuses_cooldown
   RTS
-
 
 ;--------------------------------------------------------------------------
 update_P1_direction_by_wall_collision:
