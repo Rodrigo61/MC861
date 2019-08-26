@@ -16,8 +16,6 @@ CACTUSES_BOT_SCREEN_LIMIT = $D0
 CACTUSES_LEFT_SCREEN_LIMIT = $30
 CACTUSES_RIGHT_SCREEN_LIMIT = $C0
 
-GEN_CACTUSES_COOLDOWN = $A0
-
 CENTER_SCREEN	= $80
 OFFSCREEN		= $FE	; Sprites offscreen will be placed in position (OFFSCREEN, OFFSCREEN)
   
@@ -58,6 +56,10 @@ READ_BUTTON_COOLDOWN = $10    ; empirical choice
 ; Constants about cactuses generation behavior
 MAX_CACTUSES_COUNT = 8
 CACTUSES_MIN_Y_DISTANCE = 16
+MIN_COOLDOWN_GEN_CACTUS = $20
+MAX_COOLDOWN_GEN_CACTUS = $FF
+MIN_COOLDOWN_REMOVE_CACTUS = $20
+MAX_COOLDOWN_REMOVE_CACTUS = $FF
 
 RANDOM_SEED		= $EB
 
@@ -108,7 +110,8 @@ bullet2:
   pointer_lo  .dsb 1  
   pointer_hi  .dsb 1
 
-  generate_cactuses_cooldown  .dsb 1
+  generate_one_cactus_cooldown  .dsb 1
+  remove_one_cactus_cooldown    .dsb 1
   
   ; Variable used as find_available_cactus_index function's return
   available_cactus_index      .dsb 1
@@ -176,13 +179,66 @@ update_game_state:
   JSR update_P1_positions
   JSR update_P2_positions
   JSR update_players_sprites
-  JSR generate_cactuses
+  JSR generate_one_cactus
+  JSR remove_one_cactus
+
   RTS
 
 ;--------------------------------------------------------------------------
-; This function generates new cactuses if the current cactuses count is lower
-; then MAX_CACTUSES_COUNT. This function does not create a new cactus with 
-; absolute vertical distance lower than CACTUSES_MIN_Y_DISTANCE from a existent cactus.
+; This function randomly chooses a cactus to "remove" (put offscreen). It has
+; a random cooldown.
+remove_one_cactus:
+  
+  ; Check if cooldown time has finished
+  LDA remove_one_cactus_cooldown
+  CMP #0
+  BNE remove_one_cactus_end
+
+  ; Generate a random index
+  LDA #0
+  STA random_min
+  LDA #MAX_CACTUSES_COUNT - 1
+  STA random_max
+  JSR gen_random_byte_within_range
+
+  ; Make a loop to set (X register) = (bounded_random_var * CACTUS_META_SPRITE_SIZE)
+  LDA #0      ; iterates over cactuses sprites "array", step of CACTUS_META_SPRITE_SIZE
+  LDY #0      ; counts until generated random index (i.e. bounded_random_var), step of 1B
+multiply_loop_remove_one_cactus:
+  CPY bounded_random_var
+  BEQ multiply_loop_remove_one_cactus_end
+
+  CLC
+  ADC #CACTUS_META_SPRITE_SIZE
+
+  INY
+  JMP multiply_loop_remove_one_cactus  
+multiply_loop_remove_one_cactus_end:
+  TAX
+
+  ; Put chosen cactus offscreen
+  LDA #OFFSCREEN
+  STA cactuses + SPRITE_VERT_BYTE, X
+  STA cactuses + SPRITE_HORZ_BYTE, X
+  STA cactuses + 4 + SPRITE_VERT_BYTE, X
+  STA cactuses + 4 + SPRITE_HORZ_BYTE, X
+
+  ; Reset (random) cooldown
+  LDA #MIN_COOLDOWN_REMOVE_CACTUS
+  STA random_min
+  LDA #MAX_COOLDOWN_REMOVE_CACTUS
+  STA random_max
+  JSR gen_random_byte_within_range
+  LDA bounded_random_var
+  STA remove_one_cactus_cooldown
+
+remove_one_cactus_end:
+  DEC remove_one_cactus_cooldown
+  RTS
+;--------------------------------------------------------------------------
+; This function generates a new cactus if the number of cactus on screen is not greater than
+; MAX_CACTUSES_COUNT. This function does not create a new cactus with absolute vertical 
+; distance lower than CACTUSES_MIN_Y_DISTANCE from a existent cactus.
 ; USES:
 ;   * random_min/random_max: to generate a bounded random number using get_random_byte_within_range function
 ; EXTRA:
@@ -194,18 +250,18 @@ update_game_state:
 ;    | 1  |
 ;    |4*1 |
 ;    +----+
-generate_cactuses:
+generate_one_cactus:
   
   ; Check if cooldown time has finished
-  LDA generate_cactuses_cooldown
+  LDA generate_one_cactus_cooldown
   CMP #0
-  BNE generate_cactuses_end
+  BNE generate_one_cactus_end
 
-  ; Try to find an available cactus position to the new one that will be generated.
+  ; Try to find an available cactus position for the new one that will be generated.
   JSR find_available_cactus_index
   LDA available_cactus_index
   CMP #1         ; if available_cactus_index == 1 -> there isn't an available index
-  BEQ generate_cactuses_end
+  BEQ generate_one_cactus_end
 
   ; To generate Y position, it's used the get_random_byte_within_range function.
   ; The idea of the following algorithm is to keep trying to find a new random Y position
@@ -227,7 +283,7 @@ generate_random_y_pos:
   ; with all other existents cactuses
   
   LDX #0      ; iterates over cactuses sprites "array", step of CACTUS_META_SPRITE_SIZE
-  LDY #0      ; counts until curr_cactuses_count, step of 1B
+  LDY #0      ; counts until MAX_CACTUSES_COUNT, step of 1B
 
 verify_other_cactuses_loop:
   ; Check loop condition
@@ -268,7 +324,7 @@ found_valid_y:
   STA cactuses + SPRITE_VERT_BYTE, X       
   CLC         ; remember that each sprite is a 8x8 pixels tile
   ADC #8      ;
-  STA cactuses + 4 * 1 +SPRITE_VERT_BYTE, X       
+  STA cactuses + 4 + SPRITE_VERT_BYTE, X       
 
   ; Generate and store a valid X to the new cactus
   LDA #CACTUSES_LEFT_SCREEN_LIMIT
@@ -280,12 +336,17 @@ found_valid_y:
   STA cactuses + SPRITE_HORZ_BYTE, X       
   STA cactuses + 4 * 1 +SPRITE_HORZ_BYTE, X       
   
-  ; Reset cooldown
-  LDA #GEN_CACTUSES_COOLDOWN
-  STA generate_cactuses_cooldown
+  ; Reset (random) cooldown 
+  LDA #MIN_COOLDOWN_GEN_CACTUS
+  STA random_min
+  LDA #MAX_COOLDOWN_GEN_CACTUS
+  STA random_max
+  JSR gen_random_byte_within_range
+  LDA bounded_random_var
+  STA generate_one_cactus_cooldown
 
-generate_cactuses_end:
-  DEC generate_cactuses_cooldown
+generate_one_cactus_end:
+  DEC generate_one_cactus_cooldown
   RTS
 
 ;--------------------------------------------------------------------------
@@ -645,8 +706,6 @@ end_P2_controller_handler:
 ;   * random_max
 ; RETURNS
 ;   * random_var 
-
-; TODO NAO SUJAR O RANDOM_VAR
 gen_random_byte_within_range:
 	JSR gen_random_byte
   

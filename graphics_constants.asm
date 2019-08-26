@@ -25,29 +25,29 @@ sprites:
 
   ; Cactus' sprites. Both x and y positions should change during the game
   ; Cactus 1
-  .db OFFSCREEN, $22, $40, OFFSCREEN   
-  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db $20, $22, $40, $55   
+  .db $28, $22, $40, $55   
   ; Cactus 2
-  .db OFFSCREEN, $22, $40, OFFSCREEN   
-  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db $40, $22, $40, $45   
+  .db $48, $22, $40, $45   
   ; Cactus 3
-  .db OFFSCREEN, $22, $40, OFFSCREEN   
-  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db $60, $22, $40, $55   
+  .db $68, $22, $40, $55
   ; Cactus 4
-  .db OFFSCREEN, $22, $40, OFFSCREEN   
-  .db OFFSCREEN, $22, $40, OFFSCREEN  
+  .db $80, $22, $40, $45   
+  .db $88, $22, $40, $45
   ; Cactus 5
-  .db OFFSCREEN, $22, $40, OFFSCREEN   
-  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db $A0, $22, $40, $55   
+  .db $A8, $22, $40, $55
   ; Cactus 6
-  .db OFFSCREEN, $22, $40, OFFSCREEN   
-  .db OFFSCREEN, $22, $40, OFFSCREEN  
+  .db $C0, $22, $40, $55   
+  .db $C8, $22, $40, $55
   ; Cactus 7
   .db OFFSCREEN, $22, $40, OFFSCREEN   
-  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN
   ; Cactus 8
   .db OFFSCREEN, $22, $40, OFFSCREEN   
-  .db OFFSCREEN, $22, $40, OFFSCREEN  
+  .db OFFSCREEN, $22, $40, OFFSCREEN
 
   .org $E100
 background:
