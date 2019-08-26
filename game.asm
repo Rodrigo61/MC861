@@ -109,7 +109,9 @@ bullet2:
   pointer_hi  .dsb 1
 
   generate_cactuses_cooldown  .dsb 1
-  curr_cactuses_count  .dsb 1       ; keep track of current cactuses_count
+  
+  ; Variable used as find_available_cactus_index function's return
+  available_cactus_index      .dsb 1
 
   ; Variables used by gen_random_byte_within_range and gen_random_byte functions
   random_min  .dsb 1      ; arguments to gen_random_byte_within_range function
@@ -182,10 +184,9 @@ update_game_state:
 ; then MAX_CACTUSES_COUNT. This function does not create a new cactus with 
 ; absolute vertical distance lower than CACTUSES_MIN_Y_DISTANCE from a existent cactus.
 ; USES:
-;   * curr_cactuses_count: to avoid creating more than the MAX_CACTUSES_COUNT limit
 ;   * random_min/random_max: to generate a bounded random number using get_random_byte_within_range function
 ; EXTRA:
-; The sprites' format of a cactus is the following:
+; The cactuses sprites' format are the following:
 ;    +----+
 ;    | 0  |
 ;    |4*0 |
@@ -195,15 +196,16 @@ update_game_state:
 ;    +----+
 generate_cactuses:
   
-  ; If curr_cactuses_count == MAX_CACTUSES_COUNT -> NO-OP
-  LDA curr_cactuses_count
-  CMP #MAX_CACTUSES_COUNT
-  BEQ generate_cactuses_end
-
   ; Check if cooldown time has finished
   LDA generate_cactuses_cooldown
   CMP #0
   BNE generate_cactuses_end
+
+  ; Try to find an available cactus position to the new one that will be generated.
+  JSR find_available_cactus_index
+  LDA available_cactus_index
+  CMP #1         ; if available_cactus_index == 1 -> there isn't an available index
+  BEQ generate_cactuses_end
 
   ; To generate Y position, it's used the get_random_byte_within_range function.
   ; The idea of the following algorithm is to keep trying to find a new random Y position
@@ -229,7 +231,7 @@ generate_random_y_pos:
 
 verify_other_cactuses_loop:
   ; Check loop condition
-  CPY curr_cactuses_count
+  CPY #MAX_CACTUSES_COUNT
   BEQ found_valid_y     
   
   LDA cactuses + SPRITE_VERT_BYTE, X    ;
@@ -260,7 +262,8 @@ verify_other_cactuses_loop_step:
 
 found_valid_y:
 
-  ; Store the valid y to the new cactus, use X value obtained from above loop
+  ; Store the valid y to the new cactus
+  LDX available_cactus_index
   LDA bounded_random_var
   STA cactuses + SPRITE_VERT_BYTE, X       
   CLC         ; remember that each sprite is a 8x8 pixels tile
@@ -276,9 +279,6 @@ found_valid_y:
   LDA bounded_random_var
   STA cactuses + SPRITE_HORZ_BYTE, X       
   STA cactuses + 4 * 1 +SPRITE_HORZ_BYTE, X       
-
-  ; Increment cactuses count
-  INC curr_cactuses_count
   
   ; Reset cooldown
   LDA #GEN_CACTUSES_COOLDOWN
@@ -288,6 +288,48 @@ generate_cactuses_end:
   DEC generate_cactuses_cooldown
   RTS
 
+;--------------------------------------------------------------------------
+; This function searches for the first index of the cactuses array that is available.
+; An index is considered available when the current cactus is offscreen.
+; RETURNS
+;   * available_cactus_index: with the available index.
+; WARNING
+;   * available_cactus_index = 1 when there isn't an index (1 because all index are multiple of CACTUS_META_SPRITE_SIZE)
+;
+find_available_cactus_index:
+  
+  LDX #0      ; iterates over cactuses sprites "array", step of CACTUS_META_SPRITE_SIZE
+  LDY #0      ; counts until curr_cactuses_count, step of 1B
+
+find_available_cactus_index_loop:
+  ; Check loop condition
+  CPY #MAX_CACTUSES_COUNT
+  BEQ not_found_available_index     
+  
+  ; Check current cactus is OFFSCREEN
+  LDA cactuses + SPRITE_VERT_BYTE, X
+  CMP #OFFSCREEN
+  BEQ found_available_index
+
+  ; increment CACTUS_META_SPRITE_SIZE to iterator X
+  TXA         
+  CLC                             
+  ADC #CACTUS_META_SPRITE_SIZE     
+  TAX                              
+
+  INY ; increment 1B to iterator Y
+
+  JMP find_available_cactus_index_loop
+
+not_found_available_index:
+  LDA #1    ; NOT FOUND value of this function
+  STA available_cactus_index
+  RTS
+
+found_available_index:
+  TXA
+  STA available_cactus_index
+  RTS
 ;--------------------------------------------------------------------------
 update_P1_direction_by_wall_collision:
   ; Check for direction and y position
