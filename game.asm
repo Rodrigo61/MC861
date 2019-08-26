@@ -11,10 +11,10 @@ TOP_WALL        = $20
 BOTTOM_WALL     = $D0
 LEFT_WALL       = $08  
 
-CACTUSES_TOP_SCREEN_LIMIT = $10
-CACTUSES_BOT_SCREEN_LIMIT = $D0
-CACTUSES_LEFT_SCREEN_LIMIT = $30
-CACTUSES_RIGHT_SCREEN_LIMIT = $C0
+OBJECTS_TOP_SCREEN_LIMIT = $10
+OBJECTS_BOT_SCREEN_LIMIT = $D0
+OBJECTS_LEFT_SCREEN_LIMIT = $30
+OBJECTS_RIGHT_SCREEN_LIMIT = $C0
 
 CENTER_SCREEN	= $80
 OFFSCREEN		= $FE	; Sprites offscreen will be placed in position (OFFSCREEN, OFFSCREEN)
@@ -28,10 +28,11 @@ UP_DIRECTION = 0
 DOWN_DIRECTION = 1
 
 CACTUS_META_SPRITE_SIZE = 2 * 4 ; 2 sprites of 4B
+BARREL_META_SPRITE_SIZE = 2 * 4 ; 2 sprites of 4B
 PLAYER_META_SPRITE_SIZE = 4 * 4 ; 4 sprites of 4B
 BULLET_META_SPRITE_SIZE = 1 * 4 ; 1 sprite of 4B
 
-SPRITES_TOTAL_LEN = (2 * PLAYER_META_SPRITE_SIZE) + (MAX_CACTUSES_COUNT * CACTUS_META_SPRITE_SIZE) + (2 * BULLET_META_SPRITE_SIZE)
+SPRITES_TOTAL_LEN = (2 * PLAYER_META_SPRITE_SIZE) + (MAX_CACTUSES_COUNT * CACTUS_META_SPRITE_SIZE) + (MAX_BARRELS_COUNT * BARREL_META_SPRITE_SIZE) + (2 * BULLET_META_SPRITE_SIZE)
 PALETTE_TOTAL_LEN = 2 * 16; 2 palettes of 16B
 
 ; All sprites use 4 bytes in the following order (VERTical pos, TILE number, ATTRIbutes, HORZintol pos)
@@ -53,13 +54,14 @@ BUTTON_RIGHT = %00000001
 ; Cooldown for gamepad reading
 READ_BUTTON_COOLDOWN = $10    ; empirical choice
 
-; Constants about cactuses generation behavior
+; Constants about cactuses/Barrels generation behavior
 MAX_CACTUSES_COUNT = 8
-CACTUSES_MIN_Y_DISTANCE = 16
-MIN_COOLDOWN_GEN_CACTUS = $20
-MAX_COOLDOWN_GEN_CACTUS = $FF
-MIN_COOLDOWN_REMOVE_CACTUS = $20
-MAX_COOLDOWN_REMOVE_CACTUS = $FF
+MAX_BARRELS_COUNT = 8
+OBJECTS_MIN_Y_DISTANCE = 16
+MIN_COOLDOWN_GEN_OBJECT = $20
+MAX_COOLDOWN_GEN_OBJECT = $FF
+MIN_COOLDOWN_REMOVE_OBJECT = $20
+MAX_COOLDOWN_REMOVE_OBJECT = $FF
 
 RANDOM_SEED		= $EB
 
@@ -112,9 +114,12 @@ bullet2:
 
   generate_one_cactus_cooldown  .dsb 1
   remove_one_cactus_cooldown    .dsb 1
+  generate_one_barrel_cooldown  .dsb 1
+  remove_one_barrel_cooldown    .dsb 1
   
   ; Variable used as find_available_cactus_index function's return
   available_cactus_index      .dsb 1
+  available_barrel_index      .dsb 1
 
   ; Variables used by gen_random_byte_within_range and gen_random_byte functions
   random_min  .dsb 1      ; arguments to gen_random_byte_within_range function
@@ -145,7 +150,7 @@ sprite_player2: .dsb PLAYER_META_SPRITE_SIZE
 
 cactuses: 		.dsb MAX_CACTUSES_COUNT * CACTUS_META_SPRITE_SIZE
 
-barrels: 		.dsb 64
+barrels: 		.dsb MAX_BARRELS_COUNT * BARREL_META_SPRITE_SIZE
 
 
 	.ende
@@ -181,7 +186,8 @@ update_game_state:
   JSR update_players_sprites
   JSR generate_one_cactus
   JSR remove_one_cactus
-
+  JSR generate_one_barrel
+  JSR remove_one_barrel
   RTS
 
 ;--------------------------------------------------------------------------
@@ -224,9 +230,9 @@ multiply_loop_remove_one_cactus_end:
   STA cactuses + 4 + SPRITE_HORZ_BYTE, X
 
   ; Reset (random) cooldown
-  LDA #MIN_COOLDOWN_REMOVE_CACTUS
+  LDA #MIN_COOLDOWN_REMOVE_OBJECT
   STA random_min
-  LDA #MAX_COOLDOWN_REMOVE_CACTUS
+  LDA #MAX_COOLDOWN_REMOVE_OBJECT
   STA random_max
   JSR gen_random_byte_within_range
   LDA bounded_random_var
@@ -235,10 +241,61 @@ multiply_loop_remove_one_cactus_end:
 remove_one_cactus_end:
   DEC remove_one_cactus_cooldown
   RTS
+
+;--------------------------------------------------------------------------
+; This is equal to remove_one_cactus function, but for barrels
+remove_one_barrel:
+  
+  ; Check if cooldown time has finished
+  LDA remove_one_barrel_cooldown
+  CMP #0
+  BNE remove_one_barrel_end
+
+  ; Generate a random index
+  LDA #0
+  STA random_min
+  LDA #MAX_BARRELS_COUNT - 1
+  STA random_max
+  JSR gen_random_byte_within_range
+
+  ; Make a loop to set (X register) = (bounded_random_var * BARREL_META_SPRITE_SIZE)
+  LDA #0      ; iterates over barrels sprites "array", step of BARREL_META_SPRITE_SIZE
+  LDY #0      ; counts until generated random index (i.e. bounded_random_var), step of 1B
+multiply_loop_remove_one_barrel:
+  CPY bounded_random_var
+  BEQ multiply_loop_remove_one_barrel_end
+
+  CLC
+  ADC #BARREL_META_SPRITE_SIZE
+
+  INY
+  JMP multiply_loop_remove_one_barrel  
+multiply_loop_remove_one_barrel_end:
+  TAX
+
+  ; Put chosen barrel offscreen
+  LDA #OFFSCREEN
+  STA barrels + SPRITE_VERT_BYTE, X
+  STA barrels + SPRITE_HORZ_BYTE, X
+  STA barrels + 4 + SPRITE_VERT_BYTE, X
+  STA barrels + 4 + SPRITE_HORZ_BYTE, X
+
+  ; Reset (random) cooldown
+  LDA #MIN_COOLDOWN_REMOVE_OBJECT
+  STA random_min
+  LDA #MAX_COOLDOWN_REMOVE_OBJECT
+  STA random_max
+  JSR gen_random_byte_within_range
+  LDA bounded_random_var
+  STA remove_one_barrel_cooldown
+
+remove_one_barrel_end:
+  DEC remove_one_barrel_cooldown
+  RTS
 ;--------------------------------------------------------------------------
 ; This function generates a new cactus if the number of cactus on screen is not greater than
 ; MAX_CACTUSES_COUNT. This function does not create a new cactus with absolute vertical 
-; distance lower than CACTUSES_MIN_Y_DISTANCE from a existent cactus.
+; distance lower than OBJECTS_MIN_Y_DISTANCE from a existent cactus.
 ; USES:
 ;   * random_min/random_max: to generate a bounded random number using get_random_byte_within_range function
 ; EXTRA:
@@ -265,14 +322,14 @@ generate_one_cactus:
 
   ; To generate Y position, it's used the get_random_byte_within_range function.
   ; The idea of the following algorithm is to keep trying to find a new random Y position
-  ; that not violates the CACTUSES_MIN_Y_DISTANCE rule. In order to decide to weather a new Y
+  ; that not violates the OBJECTS_MIN_Y_DISTANCE rule. In order to decide to weather a new Y
   ; position is valid we check all existent cactuses and compare their Y position with the
   ; new one. 
 
   ; Set range to call get_random_byte_within_range function
-  LDA #CACTUSES_TOP_SCREEN_LIMIT
+  LDA #OBJECTS_TOP_SCREEN_LIMIT
   STA random_min
-  LDA #CACTUSES_BOT_SCREEN_LIMIT
+  LDA #OBJECTS_BOT_SCREEN_LIMIT
   STA random_max
 
 generate_random_y_pos:
@@ -292,13 +349,13 @@ verify_other_cactuses_loop:
   
   LDA cactuses + SPRITE_VERT_BYTE, X    ;
   SEC                                   ;
-  SBC #CACTUSES_MIN_Y_DISTANCE          ;
+  SBC #OBJECTS_MIN_Y_DISTANCE          ;
   CMP bounded_random_var                ;
   BCS verify_other_cactuses_loop_step   ;  Y <= Y' - MIN_DISTANCE -> valid Y
 
   LDA cactuses + SPRITE_VERT_BYTE, X    ;
   CLC                                   ;
-  ADC #CACTUSES_MIN_Y_DISTANCE          ;
+  ADC #OBJECTS_MIN_Y_DISTANCE          ;
   CMP bounded_random_var                ;
   BCC verify_other_cactuses_loop_step   ;  Y > Y' + MIN_DISTANCE -> valid Y
 
@@ -327,9 +384,9 @@ found_valid_y:
   STA cactuses + 4 + SPRITE_VERT_BYTE, X       
 
   ; Generate and store a valid X to the new cactus
-  LDA #CACTUSES_LEFT_SCREEN_LIMIT
+  LDA #OBJECTS_LEFT_SCREEN_LIMIT
   STA random_min
-  LDA #CACTUSES_RIGHT_SCREEN_LIMIT
+  LDA #OBJECTS_RIGHT_SCREEN_LIMIT
   STA random_max
   JSR gen_random_byte_within_range
   LDA bounded_random_var
@@ -337,9 +394,9 @@ found_valid_y:
   STA cactuses + 4 * 1 +SPRITE_HORZ_BYTE, X       
   
   ; Reset (random) cooldown 
-  LDA #MIN_COOLDOWN_GEN_CACTUS
+  LDA #MIN_COOLDOWN_GEN_OBJECT
   STA random_min
-  LDA #MAX_COOLDOWN_GEN_CACTUS
+  LDA #MAX_COOLDOWN_GEN_OBJECT
   STA random_max
   JSR gen_random_byte_within_range
   LDA bounded_random_var
@@ -347,6 +404,107 @@ found_valid_y:
 
 generate_one_cactus_end:
   DEC generate_one_cactus_cooldown
+  RTS
+
+;--------------------------------------------------------------------------
+; This function is equal to genereate_one_cactus function, but for barrels
+generate_one_barrel:
+  
+  ; Check if cooldown time has finished
+  LDA generate_one_barrel_cooldown
+  CMP #0
+  BNE generate_one_barrel_end
+
+  ; Try to find an available barrel position for the new one that will be generated.
+  JSR find_available_barrel_index
+  LDA available_barrel_index
+  CMP #1         ; if available_barrel_index == 1 -> there isn't an available index
+  BEQ generate_one_barrel_end
+
+  ; To generate Y position, it's used the get_random_byte_within_range function.
+  ; The idea of the following algorithm is to keep trying to find a new random Y position
+  ; that not violates the OBJECTS_MIN_Y_DISTANCE rule. In order to decide to weather a new Y
+  ; position is valid we check all existent barreles and compare their Y position with the
+  ; new one. 
+
+  ; Set range to call get_random_byte_within_range function
+  LDA #OBJECTS_TOP_SCREEN_LIMIT
+  STA random_min
+  LDA #OBJECTS_BOT_SCREEN_LIMIT
+  STA random_max
+
+generate_barrel_random_y_pos:
+  JSR gen_random_byte_within_range
+  
+
+  ; Try to verify if the generated Y is valid by calculating the absolute vertical distance
+  ; with all other existents barrels
+  
+  LDX #0      ; iterates over barrel sprites "array", step of BARREL_META_SPRITE_SIZE
+  LDY #0      ; counts until MAX_BARRELS_COUNT, step of 1B
+
+verify_other_barrels_loop:
+  ; Check loop condition
+  CPY #MAX_BARRELS_COUNT
+  BEQ found_valid_barrel_y     
+  
+  LDA barrels + SPRITE_VERT_BYTE, X    ;
+  SEC                                   ;
+  SBC #OBJECTS_MIN_Y_DISTANCE          ;
+  CMP bounded_random_var                ;
+  BCS verify_other_barrels_loop_step   ;  Y <= Y' - MIN_DISTANCE -> valid Y
+
+  LDA barrels + SPRITE_VERT_BYTE, X    ;
+  CLC                                   ;
+  ADC #OBJECTS_MIN_Y_DISTANCE          ;
+  CMP bounded_random_var                ;
+  BCC verify_other_barrels_loop_step   ;  Y > Y' + MIN_DISTANCE -> valid Y
+
+  ; Invalid Y, have to generate a new one
+  JMP generate_barrel_random_y_pos
+
+verify_other_barrels_loop_step:
+  ; increment BARREL_META_SPRITE_SIZE to iterator X
+  TXA         
+  CLC                             
+  ADC #BARREL_META_SPRITE_SIZE     
+  TAX                              
+
+  INY ; increment 1B to iterator Y
+  JMP verify_other_barrels_loop
+
+
+found_valid_barrel_y:
+
+  ; Store the valid y to the new barrel
+  LDX available_barrel_index
+  LDA bounded_random_var
+  STA barrels + SPRITE_VERT_BYTE, X       
+  CLC         ; remember that each sprite is a 8x8 pixels tile
+  ADC #8      ;
+  STA barrels + 4 + SPRITE_VERT_BYTE, X       
+
+  ; Generate and store a valid X to the new barrel
+  LDA #OBJECTS_LEFT_SCREEN_LIMIT
+  STA random_min
+  LDA #OBJECTS_RIGHT_SCREEN_LIMIT
+  STA random_max
+  JSR gen_random_byte_within_range
+  LDA bounded_random_var
+  STA barrels + SPRITE_HORZ_BYTE, X       
+  STA barrels + 4 +SPRITE_HORZ_BYTE, X       
+  
+  ; Reset (random) cooldown 
+  LDA #MIN_COOLDOWN_GEN_OBJECT
+  STA random_min
+  LDA #MAX_COOLDOWN_GEN_OBJECT
+  STA random_max
+  JSR gen_random_byte_within_range
+  LDA bounded_random_var
+  STA generate_one_barrel_cooldown
+
+generate_one_barrel_end:
+  DEC generate_one_barrel_cooldown
   RTS
 
 ;--------------------------------------------------------------------------
@@ -390,6 +548,43 @@ not_found_available_index:
 found_available_index:
   TXA
   STA available_cactus_index
+  RTS
+
+;--------------------------------------------------------------------------
+; This function is equal to find_available_cactus_index function, but for barrels
+find_available_barrel_index:
+  
+  LDX #0      ; iterates over barrels sprites "array", step of BARREL_META_SPRITE_SIZE
+  LDY #0      ; counts until curr_barrels_count, step of 1B
+
+find_available_barrel_index_loop:
+  ; Check loop condition
+  CPY #MAX_BARRELS_COUNT
+  BEQ not_found_available_barrel_index     
+  
+  ; Check current barrel is OFFSCREEN
+  LDA barrels + SPRITE_VERT_BYTE, X
+  CMP #OFFSCREEN
+  BEQ found_available_barrel_index
+
+  ; increment BARREL_META_SPRITE_SIZE to iterator X
+  TXA         
+  CLC                             
+  ADC #BARREL_META_SPRITE_SIZE     
+  TAX                              
+
+  INY ; increment 1B to iterator Y
+
+  JMP find_available_barrel_index_loop
+
+not_found_available_barrel_index:
+  LDA #1    ; NOT FOUND value of this function
+  STA available_barrel_index
+  RTS
+
+found_available_barrel_index:
+  TXA
+  STA available_barrel_index
   RTS
 ;--------------------------------------------------------------------------
 update_P1_direction_by_wall_collision:

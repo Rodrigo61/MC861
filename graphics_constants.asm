@@ -25,29 +25,56 @@ sprites:
 
   ; Cactus' sprites. Both x and y positions should change during the game
   ; Cactus 1
-  .db $20, $22, $40, $55   
-  .db $28, $22, $40, $55   
+  .db OFFSCREEN, $22, $40, OFFSCREEN
+  .db OFFSCREEN, $22, $40, OFFSCREEN
   ; Cactus 2
-  .db $40, $22, $40, $45   
-  .db $48, $22, $40, $45   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
   ; Cactus 3
-  .db $60, $22, $40, $55   
-  .db $68, $22, $40, $55
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN
   ; Cactus 4
-  .db $80, $22, $40, $45   
-  .db $88, $22, $40, $45
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN
   ; Cactus 5
-  .db $A0, $22, $40, $55   
-  .db $A8, $22, $40, $55
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN
   ; Cactus 6
-  .db $C0, $22, $40, $55   
-  .db $C8, $22, $40, $55
+  .db OFFSCREEN, $22, $40, OFFSCREEN   
+  .db OFFSCREEN, $22, $40, OFFSCREEN
   ; Cactus 7
   .db OFFSCREEN, $22, $40, OFFSCREEN   
   .db OFFSCREEN, $22, $40, OFFSCREEN
   ; Cactus 8
   .db OFFSCREEN, $22, $40, OFFSCREEN   
   .db OFFSCREEN, $22, $40, OFFSCREEN
+
+
+  ; Barrels' sprites. Both x and y positions should change during the game
+  ; Barrel 1
+  .db OFFSCREEN, $02, $41, OFFSCREEN   
+  .db OFFSCREEN, $02, $41, OFFSCREEN
+  ; Barrel 2
+  .db OFFSCREEN, $02, $41, OFFSCREEN   
+  .db OFFSCREEN, $02, $41, OFFSCREEN
+  ; Barrel 3
+  .db OFFSCREEN, $02, $41, OFFSCREEN      
+  .db OFFSCREEN, $02, $41, OFFSCREEN   
+  ; Barrel 4
+  .db OFFSCREEN, $02, $41, OFFSCREEN      
+  .db OFFSCREEN, $02, $41, OFFSCREEN   
+  ; Barrel 5
+  .db OFFSCREEN, $02, $41, OFFSCREEN      
+  .db OFFSCREEN, $02, $41, OFFSCREEN   
+  ; Barrel 6
+  .db OFFSCREEN, $02, $41, OFFSCREEN   
+  .db OFFSCREEN, $02, $41, OFFSCREEN   
+  ; Barrel 7
+  .db OFFSCREEN, $02, $41, OFFSCREEN   
+  .db OFFSCREEN, $02, $40, OFFSCREEN
+  ; Barrel 8
+  .db OFFSCREEN, $02, $41, OFFSCREEN   
+  .db OFFSCREEN, $02, $41, OFFSCREEN
 
   .org $E100
 background:
