@@ -11,7 +11,7 @@ staTEGAMEOVER  = $02  ; displaying game over screen
   
 RIGHTWALL      = $F4  ; when ball reaches one of these, do something
 TOPWALL        = $20
-BOTTOMWALL     = $E0
+BOTTOMWALL     = $D0
 LEFTWALL       = $04
   
 PADDLE1X       = $08  ; horizontal position for paddles, doesnt move
@@ -46,8 +46,8 @@ scoreOnes     .dsb 1  ; byte for each digit in the decimal score
 scoreTens     .dsb 1
 scoreHundreds .dsb 1
 
-pointerLo  .dsb 1   ; pointer variables are declared in RAM
-pointerHi  .dsb 1   ; low byte first, high byte immediately after
+pointer_lo  .dsb 1   ; pointer variables are declared in RAM
+pointer_hi  .dsb 1   ; low byte first, high byte immediately after
 
 winner .dsb 1
 p1_score .dsb 1
@@ -135,7 +135,8 @@ LoadPalettesLoop:
                         ; if compare was equal to 32, keep going down
 
 ;;load background
-LoadBackground:
+
+load_background:
   lda $2002             ; read PPU status to reset the high/low latch
   lda #$20
   sta $2006             ; write the high byte of $2000 address
@@ -144,27 +145,27 @@ LoadBackground:
 
 
   lda #$00
-  sta pointerLo       ; put the low byte of the address of background into pointer
+  sta pointer_lo       ; put the low byte of the address of background into pointer
   lda #>(background)
-  sta pointerHi       ; put the high byte of the address into pointer
+  sta pointer_hi       ; put the high byte of the address into pointer
   
   ldx #$00            ; start at pointer + 0
   ldy #$00
-OutsideLoop:
+outside_loop_background:
   
-InsideLoop:
-  lda (pointerLo), y  ; copy one background byte from address in pointer plus Y
+inside_loop_background:
+  lda (pointer_lo), y  ; copy one background byte from address in pointer plus Y
   sta $2007           ; this runs 256 * 4 times
   
   iny                 ; inside loop counter
   cpy #$00
-  bne InsideLoop      ; run the inside loop 256 times before continuing down
+  bne inside_loop_background      ; run the inside loop 256 times before continuing down
   
-  inc pointerHi       ; low byte went 0 to 256, so high byte needs to be changed now
+  inc pointer_hi       ; low byte went 0 to 256, so high byte needs to be changed now
   
   inx
   cpx #$04
-  bne OutsideLoop     ; run the outside loop 256 times before continuing down
+  bne outside_loop_background     ; run the outside loop 256 times before continuing down
 
   lda #%10010000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
   sta $2000
@@ -442,21 +443,29 @@ UpdateSprites:
 ;  sta $2007
 ;  rts
 
-draw_score:
+; it draws the tiles before the score
+draw_before_score:
 	lda $2002
 	lda #$20
 	sta $2006
 	lda #$20
-	sta $2006          ; start drawing the score at PPU $2020
+	sta $2006          
 
 	clc
 	lda #$29
 	ldx #0
-draw_score_loop:
-	sta $2007          ; draw to background
+
+draw_before_score_loop
+	sta $2007          
 	inx
 	cpx #$0B
-	bne draw_score_loop
+	bne draw_before_score_loop
+    rts
+
+; it draws the score according with the values of p1_score and p2_score
+; p1 and p2 is supposed to be between 0 and 8
+draw_score:
+	jsr draw_before_score
 
 	lda #$24
 	sta $2007
@@ -474,29 +483,13 @@ draw_score_loop:
 	sta $2007
 	sta $2007
 
-	lda p1_score
-	cmp #$8
-	bne draw_score_end
-	jsr draw_winner
 
 draw_score_end:
 	rts 
  
 draw_winner:
-	lda $2002
-	lda #$20
-	sta $2006
-	lda #$20
-	sta $2006          ; start drawing the score at PPU $2020
 	
-	clc
-	lda #$29
-	ldx #0
-draw_winner_loop:
-	sta $2007          ; draw to background
-	inx
-	cpx #$0B
-	bne draw_winner_loop
+	jsr draw_before_score
 
 	lda #$24
 	sta $2007
