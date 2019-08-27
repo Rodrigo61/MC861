@@ -128,6 +128,10 @@ bullet2:
 	random_mod  			.dsb 1
 
 	tmp_var:			.dsb 1
+	
+	winner .dsb 1
+    p1_score .dsb 1
+    p2_score .dsb 1
 
 	.ende
 
@@ -1477,6 +1481,85 @@ update_sprites:
 
 	ldx #$0
 
+	rts
+	
+;----------------------------------------------------------------------------
+; Draw Score Functions
+
+; It draws the tiles before the score
+; Only other "Draw Score" Functions are supposed to call it
+draw_before_score:
+	lda $2002
+	lda #$20
+	sta $2006
+	lda #$20
+	sta $2006          
+
+	clc
+	lda #$29
+	ldx #0
+
+draw_before_score_loop
+	sta $2007          
+	inx
+	cpx #$0B
+	bne draw_before_score_loop
+    rts
+
+; It draws the score according to the values of p1_score and p2_score
+; p1 and p2 is supposed to be between 0 and 8
+draw_score:
+	jsr draw_before_score
+
+	lda #$24
+	sta $2007
+	sta $2007
+	sta $2007
+	lda p1_score      ; last digit
+	sta $2007
+	lda #$24
+	sta $2007
+	sta $2007
+	lda p2_score
+	sta $2007
+	lda #$24
+	sta $2007
+	sta $2007
+	sta $2007
+
+
+draw_score_end:
+	rts 
+ 
+; Display a winner's message
+; It is necessary to set the variable winner to either 1 or 2
+draw_winner:
+	
+	jsr draw_before_score
+
+	lda #$24
+	sta $2007
+	sta $2007
+	lda winner
+	sta $2007
+	lda #$24
+	sta $2007
+	lda #$20
+	sta $2007
+	lda #$12
+	sta $2007
+	lda #$17
+	sta $2007
+	lda #$1C
+	sta $2007
+	lda #$24
+	sta $2007
+	sta $2007
+
+	lda #$00
+	sta p1_score
+	sta p2_score
+	
 	rts
 
 ;################################################################
