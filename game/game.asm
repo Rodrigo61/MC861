@@ -362,29 +362,6 @@ update_game_state:
 	jsr generate_one_barrel
 	jsr remove_one_barrel
 
-	; TODO APAGAR ATÉ O rts
-	lda bullet1_x
-	cmp #OFFSCREEN
-	bne apagar_todo:
-	lda #LEFT_WALL + 8		; Spawning a bullet for test purposes.
-	sta bullet1_x
-	lda #CENTER_SCREEN
-	sta bullet1_y
-	lda #0
-	sta bullet1_direction
-	lda #0
-	sta bullet1_slowed
-
-	lda #RIGHT_WALL - 8		; Spawning a bullet for test purposes.
-	sta bullet2_x
-	lda #CENTER_SCREEN
-	sta bullet2_y
-	lda #16
-	sta bullet2_direction
-	lda #0
-	sta bullet2_slowed
-	apagar_todo:
-
 	rts
 
 ;--------------------------------------------------------------------------
@@ -1039,10 +1016,11 @@ dma_transfer:
 
 ;--------------------------------------------------------------------------
 ; This function updates player 1 direction by reversing it if button A was pressed
+; and shooting a bullet if button B was pressed
 P1_controller_handler:
 	lda P1_buttons
 	cmp #BUTTON_A
-	bne end_P1_controller_handler
+	bne end_P1_button_a_check
 
 	; Reverse Player direction
 	lda P1_direction
@@ -1052,24 +1030,47 @@ P1_controller_handler:
 	; direction == DOWN_DIRECTION, so direction = UP_DIRECTION
 	lda #UP_DIRECTION
 	sta P1_direction
-	jmp end_P1_controller_handler
+	jmp end_P1_button_a_check
 
 set_P1_direction_to_down:
 	; direction == UP_DIRECTION, so direction = DOWN_DIRECTION
 	lda #DOWN_DIRECTION
 	sta P1_direction
 	
-end_P1_controller_handler:
+end_P1_button_a_check:
+
+	; Check if button B was clicked to shoot a bullet
+	lda P1_buttons
+	cmp #BUTTON_B
+	bne end_P1_button_b_check
+
+	; Check if player1's bullet (bullet1) isn't already on screen
+	lda bullet1_x
+	cmp #OFFSCREEN
+	bne end_P1_button_b_check		; already on screen, can't spawn a new one
+	
+	; Spawning a bullet from P1 position
+	lda sprite_player1 + SPRITE_HORZ_BYTE
+	sta bullet1_x
+	lda sprite_player1 + SPRITE_VERT_BYTE
+	sta bullet1_y
+	lda #0
+	sta bullet1_direction
+	lda #0
+	sta bullet1_slowed
+
+end_P1_button_b_check:
 	lda #0
 	sta P1_buttons
 	rts
 
 ;--------------------------------------------------------------------------
 ; This function updates player 2 direction by reversing it if button A was pressed
+; and shooting a bullet if button B was pressed
 P2_controller_handler:
 	lda P2_buttons
 	cmp #BUTTON_A
-	bne end_P2_controller_handler
+	bne end_P2_button_a_check
 
 	; Reverse Player direction
 	lda P2_direction
@@ -1079,14 +1080,36 @@ P2_controller_handler:
 	; direction == DOWN_DIRECTION, so direction = UP_DIRECTION
 	lda #UP_DIRECTION
 	sta P2_direction
-	jmp end_P2_controller_handler
+	jmp end_P2_button_a_check
 
 set_P2_direction_to_down:
 	; direction == UP_DIRECTION, so direction = DOWN_DIRECTION
 	lda #DOWN_DIRECTION
 	sta P2_direction
 	
-end_P2_controller_handler:
+end_P2_button_a_check:
+
+	; Check if button B was clicked to shoot a bullet
+	lda P2_buttons
+	cmp #BUTTON_B
+	bne end_P2_button_b_check
+
+	; Check if player2's bullet (bullet2) isn't already on screen
+	lda bullet2_x
+	cmp #OFFSCREEN
+	bne end_P2_button_b_check		; already on screen, can't spawn a new one
+	
+	; Spawning a bullet from P2 position
+	lda sprite_player2 + SPRITE_HORZ_BYTE
+	sta bullet2_x
+	lda sprite_player2 + SPRITE_VERT_BYTE
+	sta bullet2_y
+	lda #16
+	sta bullet2_direction
+	lda #0
+	sta bullet2_slowed
+
+end_P2_button_b_check
 	lda #0
 	sta P2_buttons
 	rts
