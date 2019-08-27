@@ -6,12 +6,12 @@ PRG_COUNT = 1 ;1 = 16KB, 2 = 32KB
 MIRRORING = %0001 ;%0000 = horizontal, %0001 = vertical, %1000 = four-screen
 
 RIGHT_WALL      = $F0	; When a bullet reaches one of these, handle colision.
-TOP_WALL        = $20
+TOP_WALL        = $28
 BOTTOM_WALL     = $D0
 LEFT_WALL       = $08  
 
-OBJECTS_TOP_SCREEN_LIMIT = $10
-OBJECTS_BOT_SCREEN_LIMIT = $D0
+OBJECTS_TOP_SCREEN_LIMIT = $20
+OBJECTS_BOT_SCREEN_LIMIT = $C0
 OBJECTS_LEFT_SCREEN_LIMIT = $30
 OBJECTS_RIGHT_SCREEN_LIMIT = $C0
 
@@ -28,7 +28,7 @@ DOWN_DIRECTION = 1
 
 CACTUS_META_SPRITE_SIZE = 2 * 4 ; 2 sprites of 4B
 BARREL_META_SPRITE_SIZE = 2 * 4 ; 2 sprites of 4B
-PLAYER_META_SPRITE_SIZE = 4 * 4 ; 4 sprites of 4B
+PLAYER_META_SPRITE_SIZE = 6 * 4 ; 4 sprites of 4B
 BULLET_META_SPRITE_SIZE = 1 * 4 ; 1 sprite of 4B
 
 SPRITES_TOTAL_LEN = (2 * PLAYER_META_SPRITE_SIZE) + (MAX_CACTUSES_COUNT * CACTUS_META_SPRITE_SIZE) + (MAX_BARRELS_COUNT * BARREL_META_SPRITE_SIZE) + (2 * BULLET_META_SPRITE_SIZE)
@@ -312,7 +312,6 @@ NMI:
 	; Game loop
 	jsr read_P1_controller  
 	jsr read_P2_controller
-	jsr update_game_state
 
 game_engine:
 
@@ -342,6 +341,8 @@ collisions_done:
 	ldx #$1
 	jsr move_bullet		; Move player 2's bullet.
 
+	jsr update_game_state
+
 game_engine_done:
 
 	jsr update_sprites
@@ -365,29 +366,6 @@ update_game_state:
 	jsr remove_one_cactus
 	jsr generate_one_barrel
 	jsr remove_one_barrel
-
-	; TODO APAGAR ATÉ O rts
-	lda bullet1_x
-	cmp #OFFSCREEN
-	bne apagar_todo:
-	lda #LEFT_WALL + 8		; Spawning a bullet for test purposes.
-	sta bullet1_x
-	lda #CENTER_SCREEN
-	sta bullet1_y
-	lda #0
-	sta bullet1_direction
-	lda #0
-	sta bullet1_slowed
-
-	lda #RIGHT_WALL - 8		; Spawning a bullet for test purposes.
-	sta bullet2_x
-	lda #CENTER_SCREEN
-	sta bullet2_y
-	lda #16
-	sta bullet2_direction
-	lda #0
-	sta bullet2_slowed
-	apagar_todo:
 
 	rts
 
@@ -902,17 +880,27 @@ update_players_sprites:
 	lda P1_top_y
 	sta sprite_player1
 	sta sprite_player1 + 4
-	lda P1_bottom_y
+	clc
+	adc #8
 	sta sprite_player1 + 8
 	sta sprite_player1 + 12
+	clc
+	adc #8
+	sta sprite_player1 + 16
+	sta sprite_player1 + 20
 
 	; Update P2 sprite
 	lda P2_top_y
 	sta sprite_player2
 	sta sprite_player2 + 4
-	lda P2_bottom_y
+	clc
+	adc #8
 	sta sprite_player2 + 8
 	sta sprite_player2 + 12
+	clc
+	adc #8
+	sta sprite_player2 + 16
+	sta sprite_player2 + 20
  
 	rts
 	
@@ -1046,7 +1034,7 @@ dma_transfer:
 P1_controller_handler:
 	lda P1_buttons
 	cmp #BUTTON_A
-	bne end_P1_controller_handler
+	bne check_B_button_P1
 
 	; Reverse Player direction
 	lda P1_direction
@@ -1056,12 +1044,38 @@ P1_controller_handler:
 	; direction == DOWN_DIRECTION, so direction = UP_DIRECTION
 	lda #UP_DIRECTION
 	sta P1_direction
-	jmp end_P1_controller_handler
+	jmp check_B_button_P1
 
 set_P1_direction_to_down:
 	; direction == UP_DIRECTION, so direction = DOWN_DIRECTION
 	lda #DOWN_DIRECTION
 	sta P1_direction
+
+check_B_button_P1:
+	; Check B button (shot) was pressed
+	lda P1_buttons
+	cmp #BUTTON_B
+	bne end_P1_controller_handler
+
+	; check if player´s bullet is not already on screen
+	lda bullet1 + SPRITE_VERT_BYTE
+	cmp #OFFSCREEN
+	bne end_P1_controller_handler
+
+	; spawn a bullet from player´s gun
+	lda sprite_player1 + SPRITE_HORZ_BYTE
+	clc
+	adc #16
+	sta bullet1_x
+	lda sprite_player1 + 8 + SPRITE_VERT_BYTE
+	clc
+	adc #4
+	sta bullet1_y
+	lda #0
+	sta bullet1_direction
+	lda #0
+	sta bullet1_slowed
+
 	
 end_P1_controller_handler:
 	lda #0
@@ -1263,7 +1277,7 @@ check_barrel_collisions_inner_loop:		; Loop over the eight barrels in positions 
 
 	lda barrels + 0, Y		; Barrel y_min
 	sec
-	sbc #9					; TODO: check if is not #1
+	sbc #1					; TODO: check if is not #1
 	cmp bullets + 1, X		; Compare with bullet y.
 	bcs	check_barrel_collisions_inner_loop_ok	; y_min - 1 >= bullet_y, so no collision
 
@@ -1275,13 +1289,13 @@ check_barrel_collisions_inner_loop:		; Loop over the eight barrels in positions 
 	
 	lda barrels + 3, Y		; Barrel x_min
 	sec
-	sbc #9					; TODO: check if is not #1
+	sbc #1					; TODO: check if is not #1
 	cmp bullets + 0, X		; Compare with bullet x.
 	bcs	check_barrel_collisions_inner_loop_ok	; x_min - 1 >= bullet_x, so no collision
 
 	lda barrels + 3, Y		; Barrel x_min
 	clc
-	adc #15					; Barrel x_max now. TODO: check if is not #7
+	adc #7					; Barrel x_max now. TODO: check if is not #7
 	cmp bullets + 0, X		; Compare with bullet x.
 	bcc	check_barrel_collisions_inner_loop_ok	; x_max < bullet_x, so no collision
 
@@ -1329,7 +1343,7 @@ check_cactus_collisions_inner_loop:		; Loop over the eight cactuses in positions
 
 	lda cactuses + 0, Y		; Cactus y_min
 	sec
-	sbc #9					; TODO: check if is not #1
+	sbc #1					; TODO: check if is not #1
 	cmp bullets + 1, X		; Compare with bullet y.
 	bcs	check_cactus_collisions_inner_loop_ok	; y_min - 1 >= bullet_y, so no collision
 
@@ -1341,13 +1355,13 @@ check_cactus_collisions_inner_loop:		; Loop over the eight cactuses in positions
 	
 	lda cactuses + 3, Y		; Cactus x_min
 	sec
-	sbc #9					;TODO: check if is not #1
+	sbc #1					;TODO: check if is not #1
 	cmp bullets + 0, X		; Compare with bullet x.
 	bcs	check_cactus_collisions_inner_loop_ok	; x_min - 1 >= bullet_x, so no collision
 
 	lda cactuses + 3, Y		; Cactus x_min
 	clc
-	adc #15					; Cactus x_max now. TODO: check if is not #7
+	adc #7					; Cactus x_max now. TODO: check if is not #7
 	cmp bullets + 0, X		; Compare with bullet x.
 	bcc	check_cactus_collisions_inner_loop_ok	; x_max < bullet_x, so no collision
 
@@ -1462,21 +1476,21 @@ movement_done:
 ; Gets data from variables and updates the sprites needed.
 update_sprites:
 	lda bullet1_y
+	sec
+	sbc #4
 	sta sprite_bullet1 + 0
-	lda #$75
-	sta sprite_bullet1 + 1
-	lda #$00
-	sta sprite_bullet1 + 2
 	lda bullet1_x
+	sec
+	sbc #4
 	sta sprite_bullet1 + 3
 
 	lda bullet2_y
+	sec
+	sbc #4
 	sta sprite_bullet2 + 0
-	lda #$75
-	sta sprite_bullet2 + 1
-	lda #$01
-	sta sprite_bullet2 + 2
 	lda bullet2_x
+	sec
+	sbc #4
 	sta sprite_bullet2 + 3
 
 	ldx #$0
@@ -1610,4 +1624,4 @@ delta_y_direction:
 ; CHR-ROM bank
 ;################################################################
 
-	.incbin "mario.chr"   ;includes 8KB graphics file from SMB1
+	.incbin "sprite_sheet.chr"   ;includes 8KB graphics file from SMB1
