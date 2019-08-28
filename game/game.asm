@@ -180,10 +180,6 @@ barrels: 		.dsb MAX_BARRELS_COUNT * BARREL_META_SPRITE_SIZE
 
 	.base $10000-(PRG_COUNT*$4000)
 
-;--------------------------------------------------------------------------
-; Include Graphic constants
-.include "graphics_constants.asm"
-
 ;################################################################
 ; RESET
 ;################################################################
@@ -318,6 +314,8 @@ forever:
 ; nmi
 ;################################################################
 NMI:
+	jsr update_score  			; Need to do this first to avoid screen glitches.
+
 	jsr dma_transfer
 	jsr clean_PPU
 
@@ -358,14 +356,6 @@ collisions_done:
 	jsr update_game_state
 
 game_engine_done:
-
-	;lda P1_damage_taken
-	;sta p2_score
-
-	;lda P2_damage_taken
-	;sta p1_score
-
-	;jsr draw_score  ; TODO: fix me, currently broken.
 
 	jsr update_sprites
 	rti					; return from interrupt
@@ -1453,32 +1443,6 @@ check_bullet_player_collisions_inner_loop_found:
 	adc #1
 	sta players + 2, Y		; Increment player damage.
 
-	lda P1_damage_taken
-	sta p2_score
-
-	lda P2_damage_taken
-	sta p1_score
-	
-; check if there is a winner
-check_winner_1:
-	lda p1_score
-	cmp #$08
-	bne check_winner_2
-	lda #$1
-	sta winner
-	jsr draw_winner ; there is a winner - end game
-	jmp check_bullet_player_collisions_inner_loop_ok
-check_winner_2:
-	lda p2_score
-	cmp #$08
-	bne no_winner
-	lda #$2
-	sta winner
-	jsr draw_winner ; there is a winner - end game
-	jmp check_bullet_player_collisions_inner_loop_ok
-no_winner:
-	jsr draw_score
-
 check_bullet_player_collisions_inner_loop_ok:
 	tya
 	clc
@@ -1585,6 +1549,50 @@ check_cactus_collisions_outer_loop_ok:
 	jmp check_cactus_collisions_outer_loop
 
 check_cactus_collisions_done:
+	rts
+
+;--------------------------------------------------------------------------
+; Function update_score.
+; Updates score from player damage and draws it if changed.
+update_score:
+	ldy #0 					; Y will be 1 if any score changed.
+	lda P1_damage_taken
+	cmp p2_score
+	beq update_score_p1_not_changed
+	ldy #1
+update_score_p1_not_changed:
+	sta p2_score
+
+	lda P2_damage_taken
+	cmp p1_score
+	beq update_score_p2_not_changed
+	ldy #1
+update_score_p2_not_changed:
+	sta p1_score
+	
+	cpy #1
+	bne update_score_done	; If score didn't change, don't draw it again.
+; check if there is a winner
+check_winner_1:
+	lda p1_score
+	cmp #$08
+	bne check_winner_2
+	lda #$1
+	sta winner
+	jsr draw_winner ; there is a winner - end game
+	jmp update_score_done
+check_winner_2:
+	lda p2_score
+	cmp #$08
+	bne no_winner
+	lda #$2
+	sta winner
+	jsr draw_winner ; there is a winner - end game
+	jmp update_score_done
+no_winner:
+	jsr draw_score
+
+update_score_done:
 	rts
 
 ;--------------------------------------------------------------------------
@@ -1792,6 +1800,10 @@ delta_y:
 	.db 0,1,2,3,4,4,5,5,5,5,5,4,4,3,2,1,0,1,2,3,4,4,5,5,5,5,5,4,4,3,2,1
 delta_y_direction:
 	.db 0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+
+;--------------------------------------------------------------------------
+; Include Graphic constants
+	.include "graphics_constants.asm"
 
 ;################################################################
 ; interrupt vectors
