@@ -63,6 +63,7 @@ MIN_COOLDOWN_REMOVE_OBJECT = $20
 MAX_COOLDOWN_REMOVE_OBJECT = $FF
 
 RANDOM_SEED		= $EB
+MAX_RANDOM_ITERATIONS	= 50
 
 CACTUS_COOLDOWN_AMOUNT = 2
 
@@ -128,9 +129,10 @@ players:
 	; Variables used by gen_random_byte_within_range and gen_random_byte functions
 	random_min  			.dsb 1      ; arguments to gen_random_byte_within_range function
 	random_max  			.dsb 1      ;
-	bounded_random_var 	.dsb 1 		; return of gen_random_byte_within_range function
+	bounded_random_var 		.dsb 1 		; return of gen_random_byte_within_range function
 	random_var  			.dsb 1      
 	random_mod  			.dsb 1
+	random_it_counter			.dsb 1 		; used to count how many iterations on random values
 
 	tmp_var:			.dsb 1
 	
@@ -532,7 +534,20 @@ generate_one_cactus:
 	lda #OBJECTS_BOT_SCREEN_LIMIT
 	sta random_max
 
+	; Reset the random iteration counter to 0
+	lda #0
+	sta random_it_counter
+
 generate_random_y_pos:
+	; Check if it did the max number of random iterations
+	lda random_it_counter
+	cmp #MAX_RANDOM_ITERATIONS
+	beq generate_one_cactus_end
+
+	; A new random iteration increments the random_it_counter
+	inc random_it_counter
+
+	; Generate a new random Y
 	jsr gen_random_byte_within_range
 	
 
@@ -632,10 +647,22 @@ generate_one_barrel:
 	sta random_min
 	lda #OBJECTS_BOT_SCREEN_LIMIT
 	sta random_max
+	
+	; Reset the random iteration counter to 0
+	lda #0
+	sta random_it_counter
 
 generate_barrel_random_y_pos:
+	; Check if it did the max number of random iterations
+	lda random_it_counter
+	cmp #MAX_RANDOM_ITERATIONS
+	beq generate_one_cactus_end
+
+	; A new random iteration increments the random_it_counter
+	inc random_it_counter
+
+	; Generate a new random Y
 	jsr gen_random_byte_within_range
-	
 
 	; Try to verify if the generated Y is valid by calculating the absolute vertical distance
 	; with all other existents barrels
@@ -648,17 +675,17 @@ verify_other_barrels_loop:
 	cpy #MAX_BARRELS_COUNT
 	beq found_valid_barrel_y     
 	
-	lda barrels + SPRITE_VERT_BYTE, X    ;
+	lda barrels + SPRITE_VERT_BYTE, X     ;
 	sec                                   ;
-	sbc #OBJECTS_MIN_Y_DISTANCE          ;
+	sbc #OBJECTS_MIN_Y_DISTANCE           ;
 	cmp bounded_random_var                ;
-	bcs verify_other_barrels_loop_step   ;  Y <= Y' - MIN_DISTANCE -> valid Y
+	bcs verify_other_barrels_loop_step    ;  Y <= Y' - MIN_DISTANCE -> valid Y
 
-	lda barrels + SPRITE_VERT_BYTE, X    ;
+	lda barrels + SPRITE_VERT_BYTE, X     ;
 	clc                                   ;
-	adc #OBJECTS_MIN_Y_DISTANCE          ;
+	adc #OBJECTS_MIN_Y_DISTANCE           ;
 	cmp bounded_random_var                ;
-	bcc verify_other_barrels_loop_step   ;  Y > Y' + MIN_DISTANCE -> valid Y
+	bcc verify_other_barrels_loop_step    ;  Y > Y' + MIN_DISTANCE -> valid Y
 
 	; Invalid Y, have to generate a new one
 	jmp generate_barrel_random_y_pos
