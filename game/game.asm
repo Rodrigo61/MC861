@@ -1051,10 +1051,11 @@ dma_transfer:
 
 ;--------------------------------------------------------------------------
 ; This function updates player 1 direction by reversing it if button A was pressed
+; and shooting a bullet if button B was pressed
 P1_controller_handler:
 	lda P1_buttons
 	cmp #BUTTON_A
-	bne check_B_button_P1
+	bne end_P1_button_a_check
 
 	; Reverse Player direction
 	lda P1_direction
@@ -1064,14 +1065,14 @@ P1_controller_handler:
 	; direction == DOWN_DIRECTION, so direction = UP_DIRECTION
 	lda #UP_DIRECTION
 	sta P1_direction
-	jmp check_B_button_P1
+	jmp end_P1_button_a_check
 
 set_P1_direction_to_down:
 	; direction == UP_DIRECTION, so direction = DOWN_DIRECTION
 	lda #DOWN_DIRECTION
 	sta P1_direction
 
-check_B_button_P1:
+end_P1_button_a_check:
 	; Check B button (shot) was pressed
 	lda P1_buttons
 	cmp #BUTTON_B
@@ -1096,7 +1097,6 @@ check_B_button_P1:
 	lda #0
 	sta bullet1_slowed
 
-	
 end_P1_controller_handler:
 	lda #0
 	sta P1_buttons
@@ -1104,10 +1104,11 @@ end_P1_controller_handler:
 
 ;--------------------------------------------------------------------------
 ; This function updates player 2 direction by reversing it if button A was pressed
+; and shooting a bullet if button B was pressed
 P2_controller_handler:
 	lda P2_buttons
 	cmp #BUTTON_A
-	bne end_P2_controller_handler
+	bne end_P2_button_a_check
 
 	; Reverse Player direction
 	lda P2_direction
@@ -1117,13 +1118,39 @@ P2_controller_handler:
 	; direction == DOWN_DIRECTION, so direction = UP_DIRECTION
 	lda #UP_DIRECTION
 	sta P2_direction
-	jmp end_P2_controller_handler
+	jmp end_P2_button_a_check
 
 set_P2_direction_to_down:
 	; direction == UP_DIRECTION, so direction = DOWN_DIRECTION
 	lda #DOWN_DIRECTION
 	sta P2_direction
 	
+end_P2_button_a_check:
+
+	; Check B button (shot) was pressed
+	lda P2_buttons
+	cmp #BUTTON_B
+	bne end_P2_controller_handler
+
+	; check if player´s bullet is not already on screen
+	lda bullet2 + SPRITE_VERT_BYTE
+	cmp #OFFSCREEN
+	bne end_P2_controller_handler
+
+	; spawn a bullet from player´s gun
+	lda sprite_player2 + SPRITE_HORZ_BYTE
+	sec
+	sbc #16
+	sta bullet2_x
+	lda sprite_player2 + 8 + SPRITE_VERT_BYTE
+	clc
+	adc #4
+	sta bullet2_y
+	lda #16
+	sta bullet2_direction
+	lda #0
+	sta bullet2_slowed
+
 end_P2_controller_handler:
 	lda #0
 	sta P2_buttons
