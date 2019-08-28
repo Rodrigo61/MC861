@@ -1409,6 +1409,10 @@ check_cactus_collisions_inner_loop_ok:
 	tay
 	jmp check_cactus_collisions_inner_loop
 
+	jmp check_cactus_collisions_outer_loop_ok
+check_cactus_collisions_on_cooldown:
+	dec bullets + 4, X 		; Decrement bullet cooldown.
+
 check_cactus_collisions_outer_loop_ok:
 	inx
 	inx
