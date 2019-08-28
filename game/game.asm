@@ -354,13 +354,17 @@ NMI:
 	jsr dma_transfer
 	jsr clean_PPU
 
+	jsr sound_play_frame
+
 	; Game loop
 	jsr read_P1_controller  
 	jsr read_P2_controller
 
+
 game_engine:
 
 	jsr update_frame_counter
+
 
 ; 	lda frame_counter		; Auto-reset after 256 frames. TODO: REMOVE THESE 5 LINES OF CODE.
 ; 	cmp #0
@@ -393,6 +397,9 @@ collisions_done:
 game_engine_done:
 
 	jsr update_sprites
+
+
+
 	rti					; return from interrupt
 
 ;################################################################

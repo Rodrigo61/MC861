@@ -852,6 +852,8 @@ song0_header:
     .byte $01           ;status byte (stream enabled)
     .byte SQUARE_1      ;which channel
     .byte $BC          ;initial volume (F) and duty (01)
+
+    .byte ve_fade_out     ;volume envelope
     .word song0_square1 ;pointer to stream
     .byte seventhreebpm          ;
 
@@ -859,6 +861,7 @@ song0_header:
     .byte $01           ;status byte (stream enabled)
     .byte SQUARE_2      ;which channel
     .byte $3A           ;initial volume (F) and duty (01)
+    .byte ve_fade_out     ;volume envelope
     .word song0_square2 ;pointer to stream
     .byte seventhreebpm          ;tempo..very fast tempo    
 
@@ -866,6 +869,7 @@ song0_header:
     .byte $01           ;status byte (stream enabled)
     .byte TRIANGLE      ;which channel
     .byte $81          ;initial volume (F) and duty (01)
+    .byte ve_fade_out     ;volume envelope
     .word song0_triangle ;pointer to stream
     .byte seventhreebpm          ;tempo..very fast tempo    
 
@@ -967,11 +971,11 @@ song3_header:
 ;------------------------------------------------------------------
 
 
-song_headers:
+song_headers
 	.word	song0_header	; Bang Bang 
 	.word 	song1_header	; The good, the bad and the ugly
-	.word	song2_header	;
-	.word 	song3_header	; 
+	.word	song0_header	;
+	.word 	song0_header	; 
 	.word	sfx0_header		; 
 	.word 	sfx1_header		; 
 	.word	sfx2_header		;			 
