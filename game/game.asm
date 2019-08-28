@@ -7,7 +7,7 @@ MIRRORING = %0001 ;%0000 = horizontal, %0001 = vertical, %1000 = four-screen
 
 RIGHT_WALL      = $F0	; When a bullet reaches one of these, handle colision.
 TOP_WALL        = $28
-BOTTOM_WALL     = $D0
+BOTTOM_WALL     = $D8
 LEFT_WALL       = $08  
 
 OBJECTS_TOP_SCREEN_LIMIT = $20
@@ -96,7 +96,7 @@ bullet2:
 	P1_buttons_cooldown .dsb 1
 	P2_buttons_cooldown .dsb 1
 
-	; Players current y position for the TOP and BOTTOM tiles (diff of 1)
+	; Players current y position for the TOP and BOTTOM tiles (diff of 3 tiles)
 	; Pos x is constant and hardcoded in graphic_constants
 	P1_top_y            .dsb 1
 	P1_bottom_y         .dsb 1
@@ -281,7 +281,7 @@ load_sprites_loop:
 	lda #$80
 	sta P1_top_y
 	sta P2_top_y
-	lda #$88
+	lda #$98
 	sta P1_bottom_y
 	sta P2_bottom_y
 
