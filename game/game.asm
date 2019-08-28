@@ -359,13 +359,13 @@ collisions_done:
 
 game_engine_done:
 
-	lda P1_damage_taken
-	sta p2_score
+	;lda P1_damage_taken
+	;sta p2_score
 
-	lda P2_damage_taken
-	sta p1_score
+	;lda P2_damage_taken
+	;sta p1_score
 
-	; jsr draw_score  ; TODO: fix me, currently broken.
+	;jsr draw_score  ; TODO: fix me, currently broken.
 
 	jsr update_sprites
 	rti					; return from interrupt
@@ -1453,6 +1453,32 @@ check_bullet_player_collisions_inner_loop_found:
 	adc #1
 	sta players + 2, Y		; Increment player damage.
 
+	lda P1_damage_taken
+	sta p2_score
+
+	lda P2_damage_taken
+	sta p1_score
+	
+; check if there is a winner
+check_winner_1:
+	lda p1_score
+	cmp #$08
+	bne check_winner_2
+	lda #$1
+	sta winner
+	jsr draw_winner ; there is a winner - end game
+	jmp check_bullet_player_collisions_inner_loop_ok
+check_winner_2:
+	lda p2_score
+	cmp #$08
+	bne no_winner
+	lda #$2
+	sta winner
+	jsr draw_winner ; there is a winner - end game
+	jmp check_bullet_player_collisions_inner_loop_ok
+no_winner:
+	jsr draw_score
+
 check_bullet_player_collisions_inner_loop_ok:
 	tya
 	clc
@@ -1682,6 +1708,7 @@ draw_before_score_loop
 
 ; It draws the score according to the values of p1_score and p2_score
 ; p1 and p2 is supposed to be between 0 and 8
+; you can't call this method in NMI
 draw_score:
 	jsr draw_before_score
 
@@ -1730,10 +1757,6 @@ draw_winner:
 	sta $2007
 	sta $2007
 
-	lda #$00
-	sta p1_score
-	sta p2_score
-	
 	rts
 
 ;################################################################
