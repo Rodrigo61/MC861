@@ -64,6 +64,8 @@ MAX_COOLDOWN_REMOVE_OBJECT = $FF
 
 RANDOM_SEED		= $EB
 
+CACTUS_COOLDOWN_AMOUNT = 2
+
 ;################################################################
 ; Variables
 ;################################################################
@@ -80,12 +82,14 @@ bullet1:						; If the bullet is not currently on screen, x and y will be equal 
 	bullet1_y:			.dsb 1	; Vertical position of bullet.
 	bullet1_direction:	.dsb 1	; Bullet direction from 0 to 31.
 	bullet1_slowed:		.dsb 1	; 1 if bullet is currently slowed and 0 otherwise.
+	bullet1_cooldown:	.dsb 1  ; Number of frames until this bullet can collide again with a cactus.
 
 bullet2:
 	bullet2_x: 			.dsb 1
 	bullet2_y:			.dsb 1
 	bullet2_direction:	.dsb 1
 	bullet2_slowed:		.dsb 1
+	bullet2_cooldown:	.dsb 1 
 
 	; Gamepad buttons, one bit per button in the following order: A, B, Select, Start, Up, Down, Left, Right
 	P1_buttons   .dsb 1  
@@ -1163,8 +1167,8 @@ gen_random_byte:
 ; Checks collisions with the sides of the screen for both bullets and deals with the effects.
 check_side_collisions:
 	ldx #$0
-check_side_collisions_loop:		; loop over the two bullets which are at positions bullets and bullets + 4 in memory.
-	cpx #8
+check_side_collisions_loop:		; loop over the two bullets which are at positions bullets and bullets + 5 in memory.
+	cpx #10
 	beq check_side_collisions_done
 
 	lda bullets + 0, X	; Bullet x.
@@ -1185,6 +1189,7 @@ check_side_collisions_loop_ok:
 	inx
 	inx
 	inx
+	inx
 	jmp check_side_collisions_loop
 
 check_side_collisions_done:
@@ -1196,8 +1201,8 @@ check_side_collisions_done:
 ; Checks collisions with the top of the screen for both bullets and deals with the effects.
 check_top_collisions:
 	ldx #$0
-check_top_collisions_loop:		; loop over the two bullets which are at positions bullets and bullets + 4 in memory.
-	cpx #8
+check_top_collisions_loop:		; loop over the two bullets which are at positions bullets and bullets + 5 in memory.
+	cpx #10
 	beq check_top_collisions_done
 
 	lda bullets + 1, X	; Bullet y.
@@ -1221,6 +1226,7 @@ check_top_collisions_loop_ok:
 	inx
 	inx
 	inx
+	inx
 	jmp check_top_collisions_loop
 
 check_top_collisions_done:
@@ -1232,8 +1238,8 @@ check_top_collisions_done:
 ; Checks collisions with the bottom of the screen for both bullets and deals with the effects.
 check_bot_collisions:
 	ldx #$0
-check_bot_collisions_loop:		; loop over the two bullets which are at positions bullets and bullets + 4 in memory.
-	cpx #8
+check_bot_collisions_loop:		; loop over the two bullets which are at positions bullets and bullets + 5 in memory.
+	cpx #10
 	beq check_bot_collisions_done
 
 	lda bullets + 1, X	; Bullet y.
@@ -1255,6 +1261,7 @@ check_bot_collisions_loop_ok:
 	inx
 	inx
 	inx
+	inx
 	jmp check_bot_collisions_loop
 
 check_bot_collisions_done:
@@ -1266,8 +1273,8 @@ check_bot_collisions_done:
 ; Checks collisions with barrels for both bullets and deals with the effects.
 check_barrel_collisions:
 	ldx #$0
-check_barrel_collisions_outer_loop:		; loop over the two bullets which are at positions bullets and bullets + 4 in memory.
-	cpx #8
+check_barrel_collisions_outer_loop:		; loop over the two bullets which are at positions bullets and bullets + 5 in memory.
+	cpx #10
 	beq check_barrel_collisions_done
 
 	ldy #$0
@@ -1321,6 +1328,7 @@ check_barrel_collisions_outer_loop_ok:
 	inx
 	inx
 	inx
+	inx
 	jmp check_barrel_collisions_outer_loop
 
 check_barrel_collisions_done:
@@ -1332,9 +1340,13 @@ check_barrel_collisions_done:
 ; Checks collisions with cactuses for both bullets and deals with the effects.
 check_cactus_collisions:
 	ldx #$0
-check_cactus_collisions_outer_loop:		; loop over the two bullets which are at positions bullets and bullets + 4 in memory.
-	cpx #8
+check_cactus_collisions_outer_loop:		; loop over the two bullets which are at positions bullets and bullets + 5 in memory.
+	cpx #10
 	beq check_cactus_collisions_done
+
+	lda bullets + 4, X 		; Bullet cooldown.
+	cmp #0
+	bne check_cactus_collisions_on_cooldown	; If is on cooldown, don't collide with another cactus
 
 	ldy #$0
 check_cactus_collisions_inner_loop:		; Loop over the eight cactuses in positions cactuses, cactuses + 8, ... cactuses + 56 in memory.
@@ -1387,6 +1399,9 @@ check_cactus_collisions_direction_offset:
 	lda #0
 	sta bullets + 3, X	; Bullet is now not slowed.
 
+	lda #CACTUS_COOLDOWN_AMOUNT
+	sta bullets + 4, X	; Bullet is now on cooldown for cactus collisions.
+
 check_cactus_collisions_inner_loop_ok:
 	tya
 	clc
@@ -1395,6 +1410,7 @@ check_cactus_collisions_inner_loop_ok:
 	jmp check_cactus_collisions_inner_loop
 
 check_cactus_collisions_outer_loop_ok:
+	inx
 	inx
 	inx
 	inx
@@ -1420,10 +1436,13 @@ update_frame_counter:
 ; This method moves the bullet (if currently on-screen) according to its direction and slowed fields.
 ; This only updates the bullet variables (not the sprite data).
 move_bullet:
-	txa					; X = 4*X to get correct pointer increment. 
+	txa					; X = 5*X to get correct pointer increment. 
+	sta tmp_var
 	asl A
 	asl A
-	tax					; The two bullets are at positions bullets and bullets + 4 in memory.
+	clc
+	adc tmp_var
+	tax					; The two bullets are at positions bullets and bullets + 5 in memory.
 
 	lda bullets + 0, X	; Bullet x.
 	cmp #OFFSCREEN
