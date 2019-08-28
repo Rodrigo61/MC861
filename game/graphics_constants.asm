@@ -13,19 +13,19 @@ sprites:
 
   ; Players' sprites. Only vertical byte should change during the game
   ; Player 1
-  .db OFFSCREEN, $04, $00, $00   
-  .db OFFSCREEN, $05, $00, $08   
-  .db OFFSCREEN, $14, $00, $00   
-  .db OFFSCREEN, $15, $00, $08   
-  .db OFFSCREEN, $24, $00, $00   
-  .db OFFSCREEN, $25, $00, $08   
+  .db OFFSCREEN, $04, $00, PLAYER1_X   
+  .db OFFSCREEN, $05, $00, PLAYER1_X + 8   
+  .db OFFSCREEN, $14, $00, PLAYER1_X
+  .db OFFSCREEN, $15, $00, PLAYER1_X + 8
+  .db OFFSCREEN, $24, $00, PLAYER1_X
+  .db OFFSCREEN, $25, $00, PLAYER1_X + 8
   ; Player 2
-  .db OFFSCREEN, $04, $40, $F8   
-  .db OFFSCREEN, $05, $40, $F0   
-  .db OFFSCREEN, $14, $40, $F8   
-  .db OFFSCREEN, $15, $40, $F0
-  .db OFFSCREEN, $24, $40, $F8   
-  .db OFFSCREEN, $25, $40, $F0     
+  .db OFFSCREEN, $04, $40, PLAYER2_X + 8   
+  .db OFFSCREEN, $05, $40, PLAYER2_X
+  .db OFFSCREEN, $14, $40, PLAYER2_X + 8
+  .db OFFSCREEN, $15, $40, PLAYER2_X
+  .db OFFSCREEN, $24, $40, PLAYER2_X + 8
+  .db OFFSCREEN, $25, $40, PLAYER2_X
 
   ; Cactus' sprites. Both x and y positions should change during the game
   ; Cactus 1

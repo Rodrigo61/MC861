@@ -5,10 +5,10 @@
 PRG_COUNT = 1 ;1 = 16KB, 2 = 32KB
 MIRRORING = %0001 ;%0000 = horizontal, %0001 = vertical, %1000 = four-screen
 
-RIGHT_WALL      = $F0	; When a bullet reaches one of these, handle colision.
+RIGHT_WALL      = $F4	; When a bullet reaches one of these, handle colision.
 TOP_WALL        = $28
 BOTTOM_WALL     = $D8
-LEFT_WALL       = $08  
+LEFT_WALL       = $06  
 
 OBJECTS_TOP_SCREEN_LIMIT = $20
 OBJECTS_BOT_SCREEN_LIMIT = $C0
@@ -18,9 +18,9 @@ OBJECTS_RIGHT_SCREEN_LIMIT = $C0
 CENTER_SCREEN	= $80
 OFFSCREEN		= $FE	; Sprites offscreen will be placed in position (OFFSCREEN, OFFSCREEN)
 	
-; Players constant X position
-P1_X           = $08    
-P2_X           = $F0    
+; Players constant X position (minimum x)
+PLAYER1_X      = $01
+PLAYER2_X      = $EF
 
 ; Used to define players' current direction 
 UP_DIRECTION = 0
@@ -90,26 +90,27 @@ bullet2:
 	bullet2_direction:	.dsb 1
 	bullet2_slowed:		.dsb 1
 	bullet2_cooldown:	.dsb 1 
-
-	; Gamepad buttons, one bit per button in the following order: A, B, Select, Start, Up, Down, Left, Right
-	P1_buttons   .dsb 1  
-	P2_buttons   .dsb 1
+	
 	aux_buttons  .dsb 1
-
-	; Current reading cooldown of gamepad buttons
-	P1_buttons_cooldown .dsb 1
-	P2_buttons_cooldown .dsb 1
 
 	; Players current y position for the TOP and BOTTOM tiles (diff of 3 tiles)
 	; Pos x is constant and hardcoded in graphic_constants
+players:
 	P1_top_y            .dsb 1
 	P1_bottom_y         .dsb 1
+	P1_damage_taken		.dsb 1 	; Number of hits player took.
+	P1_direction 		.dsb 1 ; Player current direction.
+	P1_buttons   		.dsb 1  ; Gamepad buttons, one bit per button in the following order: A, B, Select, Start, Up, Down, Left, Right
+	P1_buttons_cooldown .dsb 1 	; Current reading cooldown of gamepad buttons
+	P1_x 				.dsb 1  ; Constant in memory to allow looping over players.
+
 	P2_top_y            .dsb 1
 	P2_bottom_y         .dsb 1
-
-	; Players current direction
-	P1_direction .dsb 1
-	P2_direction .dsb 1
+	P2_damage_taken		.dsb 1
+	P2_direction 		.dsb 1
+	P2_buttons  		.dsb 1
+	P2_buttons_cooldown .dsb 1
+	P2_x 				.dsb 1  ; Constant in memory to allow looping over players.
 
 	; Pointers used in Indirect Indexed mode
 	pointer_lo  .dsb 1  
@@ -134,8 +135,8 @@ bullet2:
 	tmp_var:			.dsb 1
 	
 	winner .dsb 1
-    p1_score .dsb 1
-    p2_score .dsb 1
+    p1_score 			.dsb 1 	; Player current score.
+    p2_score 			.dsb 1
 
 	.ende
 
@@ -289,6 +290,11 @@ load_sprites_loop:
 	sta P1_bottom_y
 	sta P2_bottom_y
 
+	lda #PLAYER1_X
+	sta P1_x
+	lda #PLAYER2_X
+	sta P2_x
+
 	lda #RANDOM_SEED
 	sta random_var
 
@@ -329,6 +335,8 @@ game_engine:
 
 checking_collisions:
 
+	jsr check_bullet_player_collisions 		; Need to check bullet first, otherwise bullet will collide with sides.
+
 	jsr check_side_collisions
 	jsr check_top_collisions
 	jsr check_bot_collisions
@@ -348,6 +356,14 @@ collisions_done:
 	jsr update_game_state
 
 game_engine_done:
+
+	lda P1_damage_taken
+	sta p2_score
+
+	lda P2_damage_taken
+	sta p1_score
+
+	; jsr draw_score  ; TODO: fix me, currently broken.
 
 	jsr update_sprites
 	rti					; return from interrupt
@@ -1332,6 +1348,73 @@ check_barrel_collisions_outer_loop_ok:
 	jmp check_barrel_collisions_outer_loop
 
 check_barrel_collisions_done:
+	rts
+
+;--------------------------------------------------------------------------
+; Function check_bullet_player_collisions
+; No arguments and no return.
+; Checks collisions with players for both bullets and deals with the effects.
+check_bullet_player_collisions:
+	ldx #$0
+check_bullet_player_collisions_outer_loop:		; loop over the two bullets which are at positions bullets and bullets + 5 in memory.
+	cpx #10
+	beq check_bullet_player_collisions_done
+
+	ldy #$0
+check_bullet_player_collisions_inner_loop:		; Loop over the two players.
+	cpy #14
+	beq check_bullet_player_collisions_outer_loop_ok
+
+	lda players + 0, Y		; player y_min
+	sec
+	sbc #1
+	cmp bullets + 1, X		; Compare with bullet y.
+	bcs	check_bullet_player_collisions_inner_loop_ok	; y_min - 1 >= bullet_y, so no collision
+
+	lda players + 0, Y		; player y_min
+	clc
+	adc #23					; Player y_max now.
+	cmp bullets + 1, X		; Compare with bullet y.
+	bcc	check_bullet_player_collisions_inner_loop_ok	; y_max < bullet_y, so no collision
+	
+	lda players + 6, Y		; player x_min
+	sec
+	sbc #1					; TODO: check if is not #1
+	cmp bullets + 0, X		; Compare with bullet x.
+	bcs	check_bullet_player_collisions_inner_loop_ok	; x_min - 1 >= bullet_x, so no collision
+
+	lda players + 6, Y		; Player x_min
+	clc
+	adc #15
+	cmp bullets + 0, X		; Compare with bullet x.
+	bcc	check_bullet_player_collisions_inner_loop_ok	; x_max < bullet_x, so no collision
+
+check_bullet_player_collisions_inner_loop_found:
+	lda #OFFSCREEN
+	sta bullets + 0, X		; Send bullet off-screen.
+	sta bullets + 1, X
+
+	lda players + 2, Y		; Player damage taken.
+	clc
+	adc #1
+	sta players + 2, Y		; Increment player damage.
+
+check_bullet_player_collisions_inner_loop_ok:
+	tya
+	clc
+	adc #7
+	tay
+	jmp check_bullet_player_collisions_inner_loop
+
+check_bullet_player_collisions_outer_loop_ok:
+	inx
+	inx
+	inx
+	inx
+	inx
+	jmp check_bullet_player_collisions_outer_loop
+
+check_bullet_player_collisions_done:
 	rts
 
 ;--------------------------------------------------------------------------
