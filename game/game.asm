@@ -140,7 +140,39 @@ players:
     p1_score 			.dsb 1 	; Player current score.
     p2_score 			.dsb 1
 
+;-----------------------------------------------------------------
+; sound engine flags
+;-----------------------------------------------------------------
+	sound_ptr:		.dsb	2
+	sound_ptr2:		.dsb	2
+
+	sound_disable_flag:	.dsb	1
+	sound_temp1:		.dsb	1
+	sound_temp2:		.dsb	1
+	sound_sq1_old:		.dsb	1 ; The last value written to $4003
+	sound_sq2_old:		.dsb	1 ; The last value written to $4007
+	soft_apu_ports:		.dsb	16
+
+		
+	stream_curr_sound:	.dsb	6 
+	stream_status:		.dsb	6
+	stream_channel:		.dsb	6 ; What channel is this stream playing on?
+	stream_ptr_lo:		.dsb	6 ; Low byte of pointer to data stream
+	stream_ptr_hi:		.dsb	6 ; High byte of pointer to data stream
+	stream_ve:		.dsb	6 ; Current volume envelope
+	stream_ve_index:	.dsb	6 ; Current position within volume envelope
+	stream_vol_duty:	.dsb	6 ; Stream volume/duty settings
+	stream_note_lo:		.dsb	6 ; Low 8 bits of period for current note
+	stream_note_hi:		.dsb	6 ; High 3 bites of period for current note
+	stream_tempo:		.dsb	6 ; The value to add to our ticker each frame
+	stream_ticker_total:	.dsb	6 ; Our running ticker totoal
+	stream_note_length_counter: .dsb 6
+	stream_note_length:	.dsb	6
+	stream_loop1:		.dsb	6 ; Loop counter
+	stream_note_offset:	.dsb	6 ; For key changes
 	.ende
+
+
 
 ;----------------------------------------------------------------
 ; sprites
@@ -305,7 +337,10 @@ load_sprites_loop:
 
 	lda #%00010000   		; enable sprites
 	sta $2001
-
+	
+	jsr sound_init
+	lda #01
+	jsr sound_load
 ;--------------------------------------------------------------------------
 forever:
 	jmp forever		; jump back to forever, infinite loop, waiting for NMI
@@ -319,13 +354,17 @@ NMI:
 	jsr dma_transfer
 	jsr clean_PPU
 
+	jsr sound_play_frame
+
 	; Game loop
 	jsr read_P1_controller  
 	jsr read_P2_controller
 
+
 game_engine:
 
 	jsr update_frame_counter
+
 
 ; 	lda frame_counter		; Auto-reset after 256 frames. TODO: REMOVE THESE 5 LINES OF CODE.
 ; 	cmp #0
@@ -358,6 +397,9 @@ collisions_done:
 game_engine_done:
 
 	jsr update_sprites
+
+
+
 	rti					; return from interrupt
 
 ;################################################################
@@ -1804,6 +1846,7 @@ delta_y_direction:
 ;--------------------------------------------------------------------------
 ; Include Graphic constants
 	.include "graphics_constants.asm"
+	.include "sound.asm"
 
 ;################################################################
 ; interrupt vectors
