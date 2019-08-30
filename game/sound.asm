@@ -173,6 +173,8 @@ SFX_2		= $05
 
 endsound 		   = $A0
 coda			   = $A1
+set_repeat_counter  = $A4
+repeat			   = $A5
 transpose 		   = $A8
 adjust_note_offset = $A7
 
@@ -208,21 +210,19 @@ sound_opcodes:
 	.word	se_op_endsound	    	 ; $A0
 	.word	se_op_infinite_loop 	 ; $A1
 	.word	se_op_change_ve	    	 ; $A2
-	.word	se_op_duty	    	 ; $A3
+	.word	se_op_duty	    	 	 ; $A3
 	.word	se_op_set_loop1_counter	 ; $A4
-	.word	se_op_loop1		 ; $A5
+	.word	se_op_loop1		 		 ; $A5
 	.word	se_op_set_note_offset	 ; $A6
 	.word 	se_op_adjust_note_offset ; $A7
-	.word	se_op_transpose		 ; $A8
+	.word	se_op_transpose		 	 ; $A8
 	;; etc, 1 entry per subroutine
 
 volume_envelope_constants:
-	ve_short_staccato	= $00
-	ve_fade_in 			= $01
-	ve_fade_out			= $02
-	ve_blip_echo 		= $03
-	ve_tgl_1 			= $04
-	ve_tgl_2 			= $05
+	ve_staccato		= $00
+	ve_fade_out		= $02
+	ve_drum_decay 	= $09
+
 
 note_table:
 .word                                                                $07F1, $0780, $0713 ; A1-B1 ($00-$02)
@@ -296,7 +296,7 @@ se_silence:
 ; No return - Disables all channels 
 sound_disable:
 	lda	#$00
-	sta	$4015		; Disable all channels
+	sta	$4015				; Disable all channels
 	lda	#$01
 	sta	sound_disable_flag 
 	rts
@@ -304,40 +304,40 @@ sound_disable:
 ; Takes a song number from register A
 ; No return - Plays the chosen song/sfx
 sound_load:
-	sta	sound_temp1	; Save song number
-	asl	a		; Multiply by 2. Index into a table of pointers.
+	sta	sound_temp1			; Save song number
+	asl	a					; Multiply by 2. Index into a table of pointers.
 	tay
-	lda	song_headers, y	; Setup the pointer to our song header
+	lda	song_headers, y		; Setup the pointer to our song header
 	sta	sound_ptr
 	lda	song_headers+1, y
 	sta	sound_ptr+1
 
 	ldy	#$00
-	lda	(sound_ptr), y	; Read the first byte: # streams
+	lda	(sound_ptr), y		; Read the first byte: # streams
 	;; Store in a temp variable. We will use this as a loop counter: how
 	;; many streams to read stream headers for
 	sta	sound_temp2
 	iny
 loop:
-	lda	(sound_ptr), y	; Stream number
-	tax			; Stream number acts as our variable index
+	lda	(sound_ptr), y		; Stream number
+	tax						; Stream number acts as our variable index
 	iny
 
-	lda	(sound_ptr), y	; Status byte. 1=enable, 0=disable
+	lda	(sound_ptr), y		; Status byte. 1=enable, 0=disable
 	sta	stream_status, x
 	;; If status byte is 0, stream disable, so we are done
 	beq	next_stream
 	iny
 
-	lda	(sound_ptr), y	; Channel number
+	lda	(sound_ptr), y		; Channel number
 	sta	stream_channel, x
 	iny
 
-	lda	(sound_ptr), y	; Initial duty and volume settings
+	lda	(sound_ptr), y		; Initial duty and volume settings
 	sta	stream_vol_duty, x
 	iny
 
-	lda	(sound_ptr), y	; Initial envelope
+	lda	(sound_ptr), y		; Initial envelope
 	sta	stream_ve, x
 	iny
 
@@ -367,17 +367,17 @@ loop:
 next_stream:
 	iny
 
-	lda	sound_temp1	; Song number
+	lda	sound_temp1				; Song number
 	sta	stream_curr_sound, x
 
-	dec	sound_temp2	; Our loop counter
+	dec	sound_temp2				; Our loop counter
 	bne	loop
 	
 	rts
 
 sound_play_frame:
 	lda	sound_disable_flag
-	bne	sound_play_frame_done		; If disable flag is set, dont' advance a frame
+	bne	sound_play_frame_done	; If disable flag is set, dont' advance a frame
 
 	;; Silence all channels. se_set_apu will set volume later for all
 	;; channels that are enabled. The purpose of this subroutine call is
@@ -387,7 +387,7 @@ sound_play_frame:
 	ldx	#$00
 sound_play_frame_loop:
 	lda	stream_status, x
-	and	#$01		; Check whether the stream is active
+	and	#$01						; Check whether the stream is active
 	beq	sound_play_frame_endloop	; If the channel isn't active, skip it
 
 	;; Add the tempo to the ticker total.  If there is an $FF -> 0
@@ -436,13 +436,13 @@ se_fetch_byte:
 	ldy	#$00
 fetch:
 	lda	(sound_ptr), y
-	bpl	note		; If < #$80, it's a Note
+	bpl	note				; If < #$80, it's a Note
 	cmp	#$A0
-	bcc	note_length	; Else if < #$A0, it's a Note Length
-opcode:			; Else it's an opcode
+	bcc	note_length			; Else if < #$A0, it's a Note Length
+opcode:						; Else it's an opcode
 	;; Do Opcode stuff
 	jsr	se_opcode_launcher
-	iny			; Next position in data stream
+	iny						; Next position in data stream
 	;; After our opcode is done, grab another byte unless the stream
 	;; is disabled.
 	lda	stream_status, x
@@ -451,18 +451,26 @@ opcode:			; Else it's an opcode
 	rts
 note_length:
 	;; Do Note Length stuff
-	and	#%01111111	; Chop off bit 7
-	sty	sound_temp1	; Save Y because we are about to destroy it
+	and	#%01111111				; Chop off bit 7
+	sty	sound_temp1				; Save Y because we are about to destroy it
 	tay
-	lda	note_length_table, y ; Get the note length count value
+	lda	note_length_table, y	; Get the note length count value
 	sta	stream_note_length, x
 	sta	stream_note_length_counter, x
-	ldy	sound_temp1	; Restore Y
+	ldy	sound_temp1				; Restore Y
 	iny
-	jmp	fetch		; Fetch another byte
+	jmp	fetch					; Fetch another byte
 note:
 	;; Do Note stuff
-	sty	sound_temp1	; Save our index into the data stream
+	sta sound_temp2             ; Save the note value
+    lda stream_channel, x       ; What channel are we using?
+    cmp #NOISE                  ; Is it the Noise channel?
+    bne not_noise              
+    jsr se_do_noise         ; If so, JSR to a subroutine to handle noise data
+    jmp reset_ve           	; and skip the note table when we return
+not_noise:                  ; else grab a period from the note_table
+    lda sound_temp2     	; Restore note value
+	sty	sound_temp1			; Save our index into the data stream
 	clc
 	adc	stream_note_offset, x
 	asl	a
@@ -471,9 +479,9 @@ note:
 	sta	stream_note_lo, x
 	lda	note_table+1, y
 	sta	stream_note_hi, x
-	ldy	sound_temp1	; Restore data stream index
-
-	lda	#$00		; Start at beginning of envelope for new notes
+	ldy	sound_temp1			; Restore data stream index
+reset_ve:    
+	lda	#$00				; Start at beginning of envelope for new notes
 	sta	stream_ve_index, x
 	;; Check if it's a rest and modify the status flag appropriately
 	jsr	se_check_rest
@@ -498,16 +506,16 @@ end:
 ;;; 	Y: data stream index
 ;;; 
 se_check_rest:
-	lda	(sound_ptr), y	; Read the note byte again
+	lda	(sound_ptr), y		; Read the note byte again
 	cmp	#rest
 	bne	not_rest
 rest:
 	lda	stream_status, x
-	ora	#%00000010	; Set the rest bit in the status byte
-	bne	store		; This will always branch (cheaper than a jmp)
+	ora	#%00000010			; Set the rest bit in the status byte
+	bne	store				; This will always branch (cheaper than a jmp)
 not_rest:
 	lda	stream_status, x
-	and	#%11111101	; Clear the rest bit in the status byte
+	and	#%11111101			; Clear the rest bit in the status byte
 store:
 	sta	stream_status, x
 	rts
@@ -551,52 +559,52 @@ se_set_temp_ports:
 ;;; 	Y: Index to channel in soft_apu_ports
 ;;;
 se_set_stream_volume:
-	sty	sound_temp1	; Save our index into soft_apu_ports
+	sty	sound_temp1				; Save our index into soft_apu_ports
 	
-	lda	stream_ve, x	; Which volume envelope?
-	asl	a		; Multiply by 2 for table of words
+	lda	stream_ve, x			; Which volume envelope?
+	asl	a						; Multiply by 2 for table of words
 	tay
-	lda	volume_envelopes, y ; Get the low byte of the address from table
+	lda	volume_envelopes, y 	; Get the low byte of the address from table
 	sta	sound_ptr
-	lda	volume_envelopes+1, y ; Get the high byte of the address
+	lda	volume_envelopes+1, y 	; Get the high byte of the address
 	sta	sound_ptr+1
 
 read_ve:
-	ldy	stream_ve_index, x ; Our current position within the envelope
-	lda	(sound_ptr), y	   ; Grab the value
+	ldy	stream_ve_index, x	; Our current position within the envelope
+	lda	(sound_ptr), y	   	; Grab the value
 	cmp	#$ff
-	bne	set_vol	   ; Not $FF, set the volume
-	dec	stream_ve_index, x ; It's $FF, go back and read last value again
+	bne	set_vol	   			; Not $FF, set the volume
+	dec	stream_ve_index, x 	; It's $FF, go back and read last value again
 	jmp	read_ve
 
 set_vol:
-	sta	sound_temp2	; Save our new volume value
+	sta	sound_temp2			; Save our new volume value
 
-	cpx	#TRIANGLE	; If not triangle channel, go ahead
+	cpx	#TRIANGLE			; If not triangle channel, go ahead
 	bne	squares
-	lda	sound_temp2	; Else if volume not zero, go ahead
+	lda	sound_temp2			; Else if volume not zero, go ahead
 	bne	squares
 	lda	#$80
-	bmi	store_vol	; Else silence the channel with #$80
+	bmi	store_vol			; Else silence the channel with #$80
 squares:
 	lda	stream_vol_duty, x ; Get current vol/duty settings
-	and	#$F0		   ; Zero out old volume
-	ora	sound_temp2	   ; OR our new volume in
+	and	#$F0		   		; Zero out old volume
+	ora	sound_temp2	   		; OR our new volume in
 
 store_vol:
-	ldy	sound_temp1	; Get the index into soft_apu_ports
-	sta	soft_apu_ports, y ; Store the volume in our temp port
-	inc	stream_ve_index, x ; Move volume envelope index to next position
+	ldy	sound_temp1			; Get the index into soft_apu_ports
+	sta	soft_apu_ports, y 	;	Store the volume in our temp port
+	inc	stream_ve_index, x 	; Move volume envelope index to next position
 
 rest_check:
 	;; Check the rest flag. If set, overwrite volume with silence value.
 	lda	stream_status, x
 	and	#%00000010
-	beq	se_set_stream_volume_done		; If clear, no rest, so quit
+	beq	se_set_stream_volume_done	; If clear, no rest, so quit
 	lda	stream_channel, x
-	cmp	#TRIANGLE	; If Triangle, silence with #$80
+	cmp	#TRIANGLE					; If Triangle, silence with #$80
 	beq	tri
-	lda	#$30		; Square and Noise, silence with #$30
+	lda	#$30						; Square and Noise, silence with #$30
 	bne	se_set_stream_volume_store
 tri:
 	lda	#$80
@@ -618,10 +626,10 @@ square1:
 	sta	$4002
 	;; Conditionally write $4003
 	lda	soft_apu_ports+3
-	cmp	sound_sq1_old	; Compare to last write
-	beq	square2	; Don't write this frame if they were equal
+	cmp	sound_sq1_old		; Compare to last write
+	beq	square2				; Don't write this frame if they were equal
 	sta	$4003
-	sta	sound_sq1_old	; Save the value we just wrote to $4003
+	sta	sound_sq1_old		; Save the value we just wrote to $4003
 square2:
 	lda	soft_apu_ports+4
 	sta	$4004
@@ -651,6 +659,18 @@ noise:
 	sta	$400f
 	rts
 
+se_do_noise:
+    lda sound_temp2     	;restore the note value
+    and #%00010000      	;isolate bit4
+    beq mode0          	;if it's clear, Mode-0, so no conversion
+mode1:
+    lda sound_temp2     	;else Mode-1, restore the note value
+    ora #%10000000      	;set bit 7 to set Mode-1
+    sta sound_temp2
+mode0:
+    lda sound_temp2
+    sta stream_note_lo, x   ;temporary port that gets copied to $400E
+    rts
 
 se_op_endsound:
 	lda	stream_status, x ; End of stream, so disable it and silence
@@ -659,22 +679,22 @@ se_op_endsound:
 
 	lda	stream_channel, x
 	cmp	#TRIANGLE
-	beq	silence_tri	; Triangle is silenced differently
-	lda	#$30		; Squares and noise silenced with #$30
+	beq	silence_tri		; Triangle is silenced differently
+	lda	#$30			; Squares and noise silenced with #$30
 	bne	silence	
 silence_tri:
-	lda	#$80		; Triangle silenced with #$80
+	lda	#$80			; Triangle silenced with #$80
 silence:
 	sta	stream_vol_duty, x
 	
 	rts
 
 se_op_infinite_loop:
-	lda	(sound_ptr), y	 ; Read ptr low from the data stream
-	sta	stream_ptr_lo, x ; Update our data stream position
-	iny			 ; Next byte
-	lda	(sound_ptr), y	 ; Read ptr high from the data stream
-	sta	stream_ptr_hi, x ; Update our data stream position
+	lda	(sound_ptr), y	 	; Read ptr low from the data stream
+	sta	stream_ptr_lo, x 	; Update our data stream position
+	iny			 			; Next byte
+	lda	(sound_ptr), y		; Read ptr high from the data stream
+	sta	stream_ptr_hi, x 	; Update our data stream position
 
 	;; Update the pontier to reflect the new position
 	sta	sound_ptr+1
@@ -688,48 +708,48 @@ se_op_infinite_loop:
 	rts
 
 se_op_change_ve:
-	lda	(sound_ptr), y	; Read the argument
-	sta	stream_ve, x	; Store it in our volume envelope variable
+	lda	(sound_ptr), y		; Read the argument
+	sta	stream_ve, x		; Store it in our volume envelope variable
 	lda	#$00
-	sta	stream_ve_index, x ; Reset envelope index to beginning
+	sta	stream_ve_index, x 	; Reset envelope index to beginning
 	rts
 
 se_op_duty:
-	lda	(sound_ptr), y	; Read the argument
+	lda	(sound_ptr), y		; Read the argument
 	sta	stream_vol_duty, x
 	rts
 
 se_op_set_loop1_counter:
-	lda	(sound_ptr), y	; Read the argument (# times to loop)
-	sta	stream_loop1, x	; Store it in the loop counter variable
+	lda	(sound_ptr), y		; Read the argument (# times to loop)
+	sta	stream_loop1, x		; Store it in the loop counter variable
 	rts
 
 se_op_loop1:
-	dec	stream_loop1, x	; Decrement the counter
+	dec	stream_loop1, x		; Decrement the counter
 	lda	stream_loop1, x
-	beq	last_iteration	; If zero, we are done looping
+	beq	last_iteration		; If zero, we are done looping
 	jmp	se_op_infinite_loop ; If not zero, jump back
 last_iteration:	
 	iny
 	rts
 
 se_op_set_note_offset:
-	lda	(sound_ptr), y	; Read the argument
-	sta	stream_note_offset, x ; Set the note offset
+	lda	(sound_ptr), y			; Read the argument
+	sta	stream_note_offset, x 	; Set the note offset
 	rts
 
 se_op_adjust_note_offset:
-	lda	(sound_ptr), y	; Read the argument (what value to add)
+	lda	(sound_ptr), y			; Read the argument (what value to add)
 	clc
-	adc	stream_note_offset, x ; Add it to the current offset
-	sta	stream_note_offset, x ;  and save it.
+	adc	stream_note_offset, x 	; Add it to the current offset
+	sta	stream_note_offset, x 	;  and save it.
 	rts
 	
 se_op_transpose:
-	lda	(sound_ptr), y	; Read low byte of pointer to lookup table
+	lda	(sound_ptr), y			; Read low byte of pointer to lookup table
 	sta	sound_ptr2
 	iny
-	lda	(sound_ptr), y	; Read high byte of pointer to lookup table
+	lda	(sound_ptr), y			; Read high byte of pointer to lookup table
 	sta	sound_ptr2+1
 
 	;; Get loop counter, and put it in Y. This will be our idex into
@@ -737,7 +757,7 @@ se_op_transpose:
 	sty	sound_temp1
 	lda	stream_loop1, x
 	tay
-	dey			; Subtract 1 because indexes start from 0
+	dey							; Subtract 1 because indexes start from 0
 
 	;; Read a value from the table, and add it to the note offset.
 	lda	(sound_ptr2), y
@@ -745,7 +765,7 @@ se_op_transpose:
 	adc	stream_note_offset, x
 	sta	stream_note_offset, x
 
-	ldy	sound_temp1	; Restore Y
+	ldy	sound_temp1				; Restore Y
 	rts
 
 ;;; 
@@ -780,7 +800,11 @@ volume_envelopes:
     .word se_ve_4
     .word se_ve_tgl_1
     .word se_ve_tgl_2
-
+	.word se_drum_decay
+    
+se_drum_decay:
+    .byte $0E, $09, $08, $06, $04, $03, $02, $01, $00  ;7 frames per drum.  Experiment to get the length and attack you want.
+    .byte $FF
 se_ve_1:
     .byte $0F, $0E, $0D, $0C, $09, $05, $00
     .byte $FF
@@ -816,6 +840,19 @@ se_ve_tgl_2:
 ;------------------------------------------------------------------
 
 sfx0_header:
+    .byte $01          		;1 stream
+    
+    .byte SFX_1         ; which stream
+    .byte $01           	; status byte (stream enabled)
+    .byte SQUARE_1     		; which channel
+    .byte $F1          		; initial volume and duty 
+    .byte ve_fade_out     	; volume envelope
+    .word sfx0_tri			; pointer to stream
+    .byte onethirtybpm     ; 73 bpm tempo
+
+sfx0_tri:
+	.byte thirtysecond, C5,G7,C8,d_sixteenth, C8
+	.byte endsound
 
 
 ;------------------------------------------------------------------
@@ -823,19 +860,59 @@ sfx0_header:
 ;------------------------------------------------------------------
 
 sfx1_header:
+    .byte $01          		;1 stream
+    
+    .byte SFX_1         ; which stream
+    .byte $01           	; status byte (stream enabled)
+    .byte SQUARE_1     		; which channel
+    .byte $3F          		; initial volume and duty 
+    .byte ve_fade_out     	; volume envelope
+    .word sfx2_square1 		; pointer to stream
+    .byte seventhreebpm     ; 73 bpm tempo
 
+sfx1_square1:
+	.byte set_repeat_counter, $02
+repeat_tritone:    
+	.byte eighth, C7,Fs7
+	.byte repeat
+	.word repeat_tritone
+	.byte endsound
 ;------------------------------------------------------------------
 ; Damage 2
 ;------------------------------------------------------------------
 
-sfx2_header:
+sfx2_header:	
+    .byte $01          		;1 stream
+    
+    .byte SFX_1         	; which stream
+    .byte $01           	; status byte (stream enabled)
+    .byte SQUARE_1     		; which channel
+    .byte $3F          		; initial volume and duty 
+    .byte ve_fade_out     	; volume envelope
+    .word sfx2_square1 		; pointer to stream
+    .byte seventhreebpm     ; 73 bpm tempo
 
-
+sfx2_square1:
+    .byte eighth, C3,Ds3	
+	.byte endsound
 ;------------------------------------------------------------------
 ; Explode
 ;------------------------------------------------------------------
 
-sfx3_header:
+sfx3_header:	
+    .byte $01          		;1 stream
+    
+    .byte SFX_1         	; which stream
+    .byte $01           	; status byte (stream enabled)
+    .byte SQUARE_1     		; which channel
+    .byte $3F          		; initial volume and duty 
+    .byte ve_fade_out     	; volume envelope
+    .word sfx3_square1 		; pointer to stream
+    .byte onethirtybpm     ; 73 bpm tempo
+
+sfx3_square1:
+    .byte sixteenth, As2,Ds2,eighth,C2	
+	.byte endsound
 
 ;------------------------------------------------------------------
 ; Songs
@@ -846,80 +923,82 @@ sfx3_header:
 ;------------------------------------------------------------------
 
 song0_header:
-    .byte $03           ;1 stream
+    .byte $03			;3 streams
     
-    .byte MUSIC_SQ1         ;which stream
-    .byte $01           ;status byte (stream enabled)
-    .byte SQUARE_1      ;which channel
-    .byte $BC          ;initial volume (F) and duty (01)
+    .byte MUSIC_SQ1     ; which stream
+    .byte $01           ; status byte (stream enabled)
+    .byte SQUARE_1      ; which channel
+    .byte $BC           ; initial volume and duty
+    .byte ve_fade_out   ; volume envelope
+    .word song0_square1 ; pointer to stream
+    .byte seventhreebpm ; 73 bpm tempo
 
-    .byte ve_fade_out     ;volume envelope
-    .word song0_square1 ;pointer to stream
-    .byte seventhreebpm          ;
+    .byte MUSIC_SQ2     ; which stream
+    .byte $01           ; status byte (stream enabled)
+    .byte SQUARE_2      ; which channel
+    .byte $3A           ; initial volume and duty
+    .byte ve_fade_out   ; volume envelope
+    .word song0_square2 ; pointer to stream
+    .byte seventhreebpm ; 73 bpm tempo    
 
-    .byte MUSIC_SQ2         ;which stream
-    .byte $01           ;status byte (stream enabled)
-    .byte SQUARE_2      ;which channel
-    .byte $3A           ;initial volume (F) and duty (01)
-    .byte ve_fade_out     ;volume envelope
-    .word song0_square2 ;pointer to stream
-    .byte seventhreebpm          ;tempo..very fast tempo    
-
-    .byte MUSIC_TRI         ;which stream
-    .byte $01           ;status byte (stream enabled)
-    .byte TRIANGLE      ;which channel
-    .byte $81          ;initial volume (F) and duty (01)
-    .byte ve_fade_out     ;volume envelope
-    .word song0_triangle ;pointer to stream
-    .byte seventhreebpm          ;tempo..very fast tempo    
+    .byte MUSIC_TRI     ; which stream
+    .byte $01           ; status byte (stream enabled)
+    .byte TRIANGLE      ; which channel
+    .byte $81           ; initial volume and duty 
+    .byte ve_fade_out   ; volume envelope
+    .word song0_triangle; pointer to stream
+    .byte seventhreebpm ; 73 bpm tempo     
 
 song0_square1:
-    .byte eighth, C5, F4, Gs4, C5, quarter, As4, Gs4 ;some random notes played very fast
+    .byte eighth, C5, F4, Gs4, C5, quarter, As4, Gs4 
 	.byte eighth, Cs5, F4, As4, Cs5, quarter, C5, As4 
 	.byte d_eighth, C5, C4, E4, Cs5, C5, As4, Gs4, G4
 	.byte half, C4
-	.byte coda
-    .word song0_square1
+	.byte endsound
+	; .byte coda
+    ; .word song0_square1
 
 song0_square2:
-    .byte eighth, G5, C4, Ds4, G5, quarter, F4, Ds4 ;some random notes played very fast
+    .byte eighth, G5, C4, Ds4, G5, quarter, F4, Ds4 
 	.byte eighth, Gs5, C4, F4, Gs5, quarter, G5, F4 
 	.byte d_eighth, G5, G4, B4, Gs5, G5, F4, Ds4, D4
 	.byte half, Gs4
-	.byte coda
-    .word song0_square2
+	.byte endsound
+	; .byte coda
+    ; .word song0_square2
 
 song0_triangle:
-	.byte quarter, C4, Gs3,  half, As3 ;some random notes played very fast
+	.byte quarter, C4, Gs3,  half, As3
 	.byte quarter, Cs4,As3,  half, C4 
 	.byte d_quarter, B3, E3, C4, G3
 	.byte half, F4
-	.byte coda
-	.word song0_triangle
+	.byte endsound
+	;.byte coda
+	;.word song0_triangle
 
 ;------------------------------------------------------------------
 ; The good, the bad and the ugly
 ;------------------------------------------------------------------
 
 song1_header:
-    .byte $03          ;1 stream
+    .byte $02       	; 3 streams
     
-	.byte MUSIC_SQ1     ;which stream
-    .byte $01           ;status byte (stream enabled)
-    .byte SQUARE_1      ;which channel
-    .byte $F1         	;initial volume (F) and duty (01)
-	.byte ve_fade_out     ;volume envelope
-    .word song1_sq1 ;pointer to stream
-    .byte onethirtybpm         ;tempo..very fast tempo    
+	.byte MUSIC_SQ1     ; which stream
+    .byte $01           ; status byte (stream enabled)
+    .byte SQUARE_1      ; which channel
+    .byte $38         	; initial volume and duty
+	.byte ve_fade_out   ; volume envelope
+    .word song1_sq1 	; pointer to stream
+    .byte onethirtybpm  ; 130 bpm tempo    
 
-	.byte MUSIC_SQ2     ;which stream
-    .byte $01           ;status byte (stream enabled)
-    .byte SQUARE_2      ;which channel
-    .byte $F1         	;initial volume (F) and duty (01)
-    .byte ve_fade_out     ;volume envelope
-	.word song1_sq2 ;pointer to stream
-    .byte onethirtybpm     
-
+	.byte MUSIC_SQ2     ; which stream
+    .byte $01           ; status byte (stream enabled)
+    .byte SQUARE_2      ; which channel
+    .byte $38         	; initial volume and duty
+    .byte ve_fade_out   ; volume envelope
+	.word song1_sq2 	; pointer to stream
+    .byte onethirtybpm  ; 130 bpm tempo     
+    
 
 song1_sq1:
 	.byte adjust_note_offset, tone
@@ -933,6 +1012,7 @@ repeat_s1_sq1:
 	;bar 5 6
 	.byte sixteenth, A5, D6, A5, d_quarter, D6, quarter, F5
 	.byte eighth, E5, D5, d_half, C5
+	.byte eighth, rest
 	.byte coda	
 	.word repeat_s1_sq1
 
@@ -949,10 +1029,22 @@ repeat_s1_sq2:
 	;bar 5 6
 	.byte sixteenth, A5, D6, A5, d_quarter, D6, quarter, F5
 	.byte eighth, E5, D5, d_half, C5
+	.byte eighth, rest
 	.byte coda
 	.word repeat_s1_sq2
 
-
+; D4 F4 A4 F4 C4
+; D4 F4 A4 F4 C4
+; A4 E5 C4 G5
+; A5 
+; D5 F5 E5 D5
+; G5
+; D5 F5 E5 D5
+; G5
+; D5 F5 E5 D5
+; G5
+; D5 F5 E5 D5
+; G5 D5 F5 E5 D5 E5 C5 D5 C5 B4 C5 A4 B4 A4 G4 A4 F4 G4 Gs4 E4 D4  
 ;------------------------------------------------------------------
 ; Song 2
 ;------------------------------------------------------------------
@@ -974,8 +1066,8 @@ song3_header:
 song_headers
 	.word	song0_header	; Bang Bang 
 	.word 	song1_header	; The good, the bad and the ugly
-	.word	song0_header	;
-	.word 	song0_header	; 
+	.word	song2_header	;
+	.word 	song3_header	; 
 	.word	sfx0_header		; 
 	.word 	sfx1_header		; 
 	.word	sfx2_header		;			 
