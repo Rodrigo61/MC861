@@ -1628,7 +1628,7 @@ update_score_p2_not_changed:
 ; check if there is a winner
 check_winner_1:
 	lda p1_score
-	cmp #$05
+	cmp #$08
 	bne check_winner_2
 	lda #$1
 	sta winner
