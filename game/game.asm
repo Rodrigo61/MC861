@@ -10,7 +10,7 @@ TOP_WALL        = $30
 BOTTOM_WALL     = $D8
 LEFT_WALL       = $06  
 
-OBJECTS_TOP_SCREEN_LIMIT = $30
+OBJECTS_TOP_SCREEN_LIMIT = $30 		; Section of the screen where cactuses and barrels will appear.
 OBJECTS_BOT_SCREEN_LIMIT = $C0
 OBJECTS_LEFT_SCREEN_LIMIT = $30
 OBJECTS_RIGHT_SCREEN_LIMIT = $C0
@@ -100,7 +100,7 @@ players:
 	P1_top_y            .dsb 1
 	P1_bottom_y         .dsb 1
 	P1_damage_taken		.dsb 1 	; Number of hits player took.
-	P1_direction 		.dsb 1 ; Player current direction.
+	P1_direction 		.dsb 1  ; Player current direction.
 	P1_buttons   		.dsb 1  ; Gamepad buttons, one bit per button in the following order: A, B, Select, Start, Up, Down, Left, Right
 	P1_buttons_cooldown .dsb 1 	; Current reading cooldown of gamepad buttons
 	P1_x 				.dsb 1  ; Constant in memory to allow looping over players.
@@ -111,7 +111,7 @@ players:
 	P2_direction 		.dsb 1
 	P2_buttons  		.dsb 1
 	P2_buttons_cooldown .dsb 1
-	P2_x 				.dsb 1  ; Constant in memory to allow looping over players.
+	P2_x 				.dsb 1
 
 	; Pointers used in Indirect Indexed mode
 	pointer_lo  .dsb 1  
@@ -132,11 +132,11 @@ players:
 	bounded_random_var 		.dsb 1 		; return of gen_random_byte_within_range function
 	random_var  			.dsb 1      
 	random_mod  			.dsb 1
-	random_it_counter			.dsb 1 		; used to count how many iterations on random values
+	random_it_counter		.dsb 1 		; used to count how many iterations on random values
 
-	tmp_var:			.dsb 1
+	tmp_var:				.dsb 1 		; tmp var which can be used anywhere.
 	
-	winner .dsb 1
+	winner 				.dsb 1 	; Winner of the game or 0 if game is still going.
     p1_score 			.dsb 1 	; Player current score.
     p2_score 			.dsb 1
 
@@ -154,22 +154,22 @@ players:
 	soft_apu_ports:		.dsb	16
 
 		
-	stream_curr_sound:	.dsb	6 
-	stream_status:		.dsb	6
-	stream_channel:		.dsb	6 ; What channel is this stream playing on?
-	stream_ptr_lo:		.dsb	6 ; Low byte of pointer to data stream
-	stream_ptr_hi:		.dsb	6 ; High byte of pointer to data stream
-	stream_ve:		.dsb	6 ; Current volume envelope
-	stream_ve_index:	.dsb	6 ; Current position within volume envelope
-	stream_vol_duty:	.dsb	6 ; Stream volume/duty settings
-	stream_note_lo:		.dsb	6 ; Low 8 bits of period for current note
-	stream_note_hi:		.dsb	6 ; High 3 bites of period for current note
-	stream_tempo:		.dsb	6 ; The value to add to our ticker each frame
-	stream_ticker_total:	.dsb	6 ; Our running ticker totoal
-	stream_note_length_counter: .dsb 6
-	stream_note_length:	.dsb	6
-	stream_loop1:		.dsb	6 ; Loop counter
-	stream_note_offset:	.dsb	6 ; For key changes
+	stream_curr_sound:			.dsb	6 
+	stream_status:				.dsb	6
+	stream_channel:				.dsb	6 ; What channel is this stream playing on?
+	stream_ptr_lo:				.dsb	6 ; Low byte of pointer to data stream
+	stream_ptr_hi:				.dsb	6 ; High byte of pointer to data stream
+	stream_ve:					.dsb	6 ; Current volume envelope
+	stream_ve_index:			.dsb	6 ; Current position within volume envelope
+	stream_vol_duty:			.dsb	6 ; Stream volume/duty settings
+	stream_note_lo:				.dsb	6 ; Low 8 bits of period for current note
+	stream_note_hi:				.dsb	6 ; High 3 bites of period for current note
+	stream_tempo:				.dsb	6 ; The value to add to our ticker each frame
+	stream_ticker_total:		.dsb	6 ; Our running ticker totoal
+	stream_note_length_counter: .dsb	6
+	stream_note_length:			.dsb	6
+	stream_loop1:				.dsb	6 ; Loop counter
+	stream_note_offset:			.dsb	6 ; For key changes
 	.ende
 
 
@@ -361,17 +361,9 @@ NMI:
 	jsr read_P1_controller  
 	jsr read_P2_controller
 
-
 game_engine:
 
 	jsr update_frame_counter
-
-
-; 	lda frame_counter		; Auto-reset after 256 frames. TODO: REMOVE THESE 5 LINES OF CODE.
-; 	cmp #0
-; 	bne	skip_auto_reset
-; 	jmp reset
-; skip_auto_reset:
 
 checking_collisions:
 
@@ -420,8 +412,6 @@ game_engine_done:
 	jsr update_sprites
 
 	rti					; return from interrupt
-
-
 
 ;################################################################
 ; functions
@@ -1756,7 +1746,6 @@ update_sprites:
 	
 ;----------------------------------------------------------------------------
 ; Draw Score Functions
-
 ; It draws the score according to the values of p1_score and p2_score
 ; p1 and p2 is supposed to be between 0 and 8
 draw_score:
@@ -1786,6 +1775,7 @@ draw_score:
 draw_score_end:
 	rts 
 
+;----------------------------------------------------------------------------
 ; Display a winner's message
 ; It is necessary to set the variable winner to either 1 or 2
 draw_winner:
@@ -1821,9 +1811,8 @@ draw_winner:
 
 	rts
 
-game_start_message_string:
-	.db "PRESS START TO PLAY"-"A"+10
-
+;----------------------------------------------------------------------------
+; Draw a message on the screen for "press start to play".
 draw_press_start:
 	lda $2002    ; read PPU status to reset the high/low latch
 	lda #$20
@@ -1846,6 +1835,9 @@ draw_press_start_return
 ;################################################################
 ; static data
 ;################################################################
+
+game_start_message_string:
+	.db "PRESS START TO PLAY"-"A"+10
 
 ; Movement logic:
 ;
