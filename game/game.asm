@@ -6,11 +6,11 @@ PRG_COUNT = 1 ;1 = 16KB, 2 = 32KB
 MIRRORING = %0001 ;%0000 = horizontal, %0001 = vertical, %1000 = four-screen
 
 RIGHT_WALL      = $F4	; When a bullet reaches one of these, handle colision.
-TOP_WALL        = $28
+TOP_WALL        = $30
 BOTTOM_WALL     = $D8
 LEFT_WALL       = $06  
 
-OBJECTS_TOP_SCREEN_LIMIT = $28
+OBJECTS_TOP_SCREEN_LIMIT = $30
 OBJECTS_BOT_SCREEN_LIMIT = $C0
 OBJECTS_LEFT_SCREEN_LIMIT = $30
 OBJECTS_RIGHT_SCREEN_LIMIT = $C0
@@ -341,6 +341,7 @@ load_sprites_loop:
 	jsr sound_init
 	lda #01
 	jsr sound_load
+
 ;--------------------------------------------------------------------------
 forever:
 	jmp forever		; jump back to forever, infinite loop, waiting for NMI
@@ -1765,18 +1766,18 @@ draw_score:
 	lda #$2B
 	sta $2006          
 
-	lda #$24
+	lda #$25
 	sta $2007
 	sta $2007
 	sta $2007
 	lda p1_score      ; last digit
 	sta $2007
-	lda #$24
+	lda #$25
 	sta $2007
 	sta $2007
 	lda p2_score
 	sta $2007
-	lda #$24
+	lda #$25
 	sta $2007
 	sta $2007
 	sta $2007
@@ -1795,14 +1796,14 @@ draw_winner:
 	lda #$2B
 	sta $2006          
 
-	lda #$24
+	lda #$25
 	sta $2007
 	sta $2007
 	lda #$19
 	sta $2007
 	lda winner
 	sta $2007
-	lda #$24
+	lda #$25
 	sta $2007
 	lda #$20
 	sta $2007
@@ -1812,7 +1813,7 @@ draw_winner:
 	sta $2007
 	lda #$1C
 	sta $2007
-	lda #$24
+	lda #$25
 	sta $2007
 	sta $2007
 
