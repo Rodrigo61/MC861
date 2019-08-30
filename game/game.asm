@@ -339,7 +339,7 @@ load_sprites_loop:
 	sta $2001
 	
 	jsr sound_init
-	lda #01
+	lda #DUELMUSIC
 	jsr sound_load
 
 ;--------------------------------------------------------------------------
@@ -1438,7 +1438,9 @@ check_barrel_collisions_inner_loop_found:
 	sta barrels + 3, Y
 	sta barrels + 0 + 4, Y
 	sta barrels + 3 + 4, Y
-
+play_barrel_explode:
+	lda #EXPLOSION
+	jsr sound_load
 check_barrel_collisions_inner_loop_ok:
 	tya
 	clc
@@ -1506,6 +1508,18 @@ check_bullet_player_collisions_inner_loop_found:
 	adc #1
 	sta players + 2, Y		; Increment player damage.
 
+play_sound_damage:
+	lda players + 2, y
+	lsr a
+	bcs sound_2:	
+	bcc sound_1:
+sound_1:
+	lda #OOFSOUND2
+	jmp play_sound_damage_finally
+sound_2:
+	lda #OOFSOUND1
+play_sound_damage_finally:	
+	jsr sound_load
 check_bullet_player_collisions_inner_loop_ok:
 	tya
 	clc
@@ -1591,6 +1605,10 @@ check_cactus_collisions_direction_offset:
 
 	lda #CACTUS_COOLDOWN_AMOUNT
 	sta bullets + 4, X	; Bullet is now on cooldown for cactus collisions.
+
+play_cactus_ping:
+	lda #JUMPSOUND
+	jsr sound_load
 
 check_cactus_collisions_inner_loop_ok:
 	tya
@@ -1789,7 +1807,8 @@ draw_score_end:
 ; Display a winner's message
 ; It is necessary to set the variable winner to either 1 or 2
 draw_winner:
-	
+	lda #SADCOWBOY
+	jsr sound_load
 	lda $2002    ; read PPU status to reset the high/low latch
 	lda #$20
 	sta $2006    ; write to adress $202B
