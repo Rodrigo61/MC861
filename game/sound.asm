@@ -304,6 +304,14 @@ sound_disable:
 ; Takes a song number from register A
 ; No return - Plays the chosen song/sfx
 sound_load:
+	sta tmp_var
+	tya
+	pha
+	txa
+	pha
+
+	lda tmp_var
+
 	sta	sound_temp1			; Save song number
 	asl	a					; Multiply by 2. Index into a table of pointers.
 	tay
@@ -373,6 +381,11 @@ next_stream:
 	dec	sound_temp2				; Our loop counter
 	bne	loop
 	
+	pla
+	tax
+	pla
+	tay
+
 	rts
 
 sound_play_frame:
