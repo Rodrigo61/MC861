@@ -386,6 +386,11 @@ checking_collisions:
 
 collisions_done:
 
+	lda winner
+	cmp #0
+	bne winner_determined	; Stop all movement when winner has been determined
+
+handle_objects_movement:
 	ldx #$0
 	jsr move_bullet		; Move player 1's bullet.
 
@@ -393,14 +398,29 @@ collisions_done:
 	jsr move_bullet		; Move player 2's bullet.
 
 	jsr update_game_state
+	jmp game_engine_done
+
+winner_determined:		; Game over, wait for someone to press start.
+
+	lda P1_buttons
+	cmp #BUTTON_START
+	beq restart_game
+
+	lda P2_buttons
+	cmp #BUTTON_START
+	beq restart_game
+	jmp game_engine_done
+
+restart_game:			; Reset if someone pressed start.
+	jmp reset
 
 game_engine_done:
 
 	jsr update_sprites
 
-
-
 	rti					; return from interrupt
+
+
 
 ;################################################################
 ; functions
@@ -1617,7 +1637,7 @@ update_score_p2_not_changed:
 ; check if there is a winner
 check_winner_1:
 	lda p1_score
-	cmp #$08
+	cmp #$05
 	bne check_winner_2
 	lda #$1
 	sta winner
@@ -1736,31 +1756,14 @@ update_sprites:
 ;----------------------------------------------------------------------------
 ; Draw Score Functions
 
-; It draws the tiles before the score
-; Only other "Draw Score" Functions are supposed to call it
-draw_before_score:
-	lda $2002
-	lda #$20
-	sta $2006
-	lda #$20
-	sta $2006          
-
-	clc
-	lda #$29
-	ldx #0
-
-draw_before_score_loop
-	sta $2007          
-	inx
-	cpx #$0B
-	bne draw_before_score_loop
-    rts
-
 ; It draws the score according to the values of p1_score and p2_score
 ; p1 and p2 is supposed to be between 0 and 8
-; you can't call this method in NMI
 draw_score:
-	jsr draw_before_score
+	lda $2002    ; read PPU status to reset the high/low latch
+	lda #$20
+	sta $2006    ; write to adress $202B
+	lda #$2B
+	sta $2006          
 
 	lda #$24
 	sta $2007
@@ -1781,15 +1784,21 @@ draw_score:
 
 draw_score_end:
 	rts 
- 
+
 ; Display a winner's message
 ; It is necessary to set the variable winner to either 1 or 2
 draw_winner:
 	
-	jsr draw_before_score
+	lda $2002    ; read PPU status to reset the high/low latch
+	lda #$20
+	sta $2006    ; write to adress $202B
+	lda #$2B
+	sta $2006          
 
 	lda #$24
 	sta $2007
+	sta $2007
+	lda #$19
 	sta $2007
 	lda winner
 	sta $2007
@@ -1807,6 +1816,30 @@ draw_winner:
 	sta $2007
 	sta $2007
 
+	jsr draw_press_start
+
+	rts
+
+game_start_message_string:
+	.db "PRESS START TO PLAY"-"A"+10
+
+draw_press_start:
+	lda $2002    ; read PPU status to reset the high/low latch
+	lda #$20
+	sta $2006    ; write to adress $202B
+	lda #$A7
+	sta $2006          
+
+	ldx #0
+draw_press_start_loop:
+	cpx #19
+	beq draw_press_start_return
+	lda game_start_message_string, x
+	sta $2007
+	inx
+	jmp draw_press_start_loop
+
+draw_press_start_return
 	rts
 
 ;################################################################
