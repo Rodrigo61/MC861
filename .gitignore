@@ -1,3 +1,6 @@
 *.txt
 *.dbg
 *.nes
+bin/*
+log/*
+
