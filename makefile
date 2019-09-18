@@ -1,5 +1,5 @@
 CC=g++
-CCFLAGS=-std=gnu++11 -O3
+CCFLAGS=-std=c++14 -g -Wall -Wextra -Wno-unused-result -Wconversion -Wfatal-errors -fsanitize=undefined,address
 
 TST=./tst
 RES=./res
@@ -8,13 +8,21 @@ LOG=./log
 EXT=./ext
 NES=./bin/nesemu
 
+CPPFILES = $(shell find $(SRCDIR) -maxdepth 2 -name '*.cpp')
+OBJFILES = $(patsubst %.cpp,%.o,$(CPPFILES))
+
+SRCDIR = emulator
+
 TESTS=$(addprefix ${BIN}/, $(notdir $(patsubst %.s,%,$(sort $(wildcard ${TST}/*.s)))))
 CROSS_AS=${EXT}/asm6/asm6
 
 all: ${BIN} ${LOG} ${NES}
 
-${NES}:
-	${CC} ${CCFLAGS} main.cpp -o ${NES}
+${NES}: $(OBJFILES)
+	${CC} ${CCFLAGS} $(OBJFILES) -o ${NES}
+
+%.o: %.cpp
+	$(CXX) ${CCFLAGS} -c $< -o $@ $(CPPFLAGS)
 
 ${BIN}:
 	@mkdir -p ${BIN}
@@ -53,4 +61,4 @@ setup:
 	sudo apt-get install higa g++ libsdl1.2-dev libsdl-image1.2-dev libsdl-mixer1.2-dev libsdl-ttf2.0-dev
 
 clean:
-	rm -rf ${BIN}/* ${LOG}/*
+	rm -rf ${BIN}/* ${LOG}/* $(OBJFILES)
