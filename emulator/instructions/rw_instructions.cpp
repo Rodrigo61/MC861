@@ -196,3 +196,58 @@ void exec_st(instruction ins)
 
 	write_log(address, data);
 }
+
+void exec_ph(instruction ins)
+{
+	uint8_t data;
+
+	switch (ins.opcode)
+	{
+	case PHA:
+		data = registers.a;
+		break;
+	case PHP:
+		data = registers.p.v;
+		break;
+	
+	default:
+		assert(false);
+	}
+
+	uint16_t address = mcu.store_absolute(build_dword(0x01, registers.sp), data);
+	registers.sp--;
+
+	write_log(address, data);
+}
+
+void exec_pl(instruction ins)
+{
+	uint16_t address;
+	uint8_t *dest;
+	uint8_t data;
+
+	switch (ins.opcode)
+	{
+	case PLA:
+		dest = &registers.a;
+		break;
+	case PLP:
+		dest = &registers.p.v;
+		break;
+	
+	default:
+		assert(false);
+	}
+
+	registers.sp++;
+	tie(address, data) = mcu.load_absolute(build_dword(0x01, registers.sp));
+	*dest = data;
+
+	if (ins.opcode == PLA)
+	{
+		set_zero_flag(data);
+		set_negative_flag(data);
+	}
+
+	write_log(address, data);
+}

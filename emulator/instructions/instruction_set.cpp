@@ -40,4 +40,10 @@ void build_instruction_set()
 	instruction_set[STY_ZERO_PAGE] = {exec_st, 2, 3};
 	instruction_set[STY_ZERO_PAGE_X] = {exec_st, 2, 4};
 	instruction_set[STY_ABSOLUTE] = {exec_st, 3, 4};
+
+	instruction_set[PHA] = {exec_ph, 1, 3};
+	instruction_set[PHP] = {exec_ph, 1, 3};
+
+	instruction_set[PLA] = {exec_pl, 1, 4};
+	instruction_set[PLP] = {exec_pl, 1, 4};
 }

@@ -39,6 +39,12 @@
 #define STY_ZERO_PAGE_X 0x94
 #define STY_ABSOLUTE 0x8C
 
+#define PHA 0x48
+#define PHP 0x08
+
+#define PLA 0x68
+#define PLP 0x28
+
 #define BRK 0x00
 
 struct instruction;
@@ -52,3 +58,7 @@ void exec_ld(instruction ins);
 void exec_ld_immediate(instruction ins);
 
 void exec_st(instruction ins);
+
+void exec_ph(instruction ins);
+
+void exec_pl(instruction ins);
