@@ -86,6 +86,9 @@
 #define ORA_ZERO_PAGE_X 0x15
 #define ORA_ABSOLUTE 0x0D
 #define ORA_ABSOLUTE_X 0x1D
+#define ORA_ABSOLUTE_Y 0x19
+#define ORA_INDIRECT_X 0x01
+#define ORA_INDIRECT_Y 0x11
 
 #define ROL_ACCUMULATOR 0x2A
 #define ROL_ZERO_PAGE 0x26
@@ -126,6 +129,10 @@ void exec_pl(instruction ins);
 
 void exec_transfer(instruction ins);
 
-void exec_and(instruction ins);
+void exec_logical(instruction ins);
 
-void exec_asl(instruction ins);
+void exec_shift(instruction ins);
+
+void exec_rotate(instruction ins);
+
+void exec_bit(instruction ins);
