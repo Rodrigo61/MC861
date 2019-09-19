@@ -47,11 +47,25 @@ void build_instruction_set()
 	instruction_set[PLA] = {exec_pl, 1, 4};
 	instruction_set[PLP] = {exec_pl, 1, 4};
 
-	instruction_set[TAX] = {transfer, 1, 2};
-	instruction_set[TXA] = {transfer, 1, 2};
-	instruction_set[TAY] = {transfer, 1, 2};
-	instruction_set[TYA] = {transfer, 1, 2};
-	instruction_set[TSX] = {transfer, 1, 2};
-	instruction_set[TXS] = {transfer, 1, 2};
+	instruction_set[TAX] = {exec_transfer, 1, 2};
+	instruction_set[TXA] = {exec_transfer, 1, 2};
+	instruction_set[TAY] = {exec_transfer, 1, 2};
+	instruction_set[TYA] = {exec_transfer, 1, 2};
+	instruction_set[TSX] = {exec_transfer, 1, 2};
+	instruction_set[TXS] = {exec_transfer, 1, 2};
 
+	instruction_set[AND_IMMEDIATE] = {exec_and, 2, 2};
+	instruction_set[AND_ZERO_PAGE] = {exec_and, 2, 3};
+	instruction_set[AND_ZERO_PAGE_X] = {exec_and, 2, 4};
+	instruction_set[AND_ABSOLUTE] = {exec_and, 3, 4};
+	instruction_set[AND_ABSOLUTE_X] = {exec_and, 3, 4};
+	instruction_set[AND_ABSOLUTE_Y] = {exec_and, 3, 4};
+	instruction_set[AND_INDIRECT_X] = {exec_and, 2, 6};
+	instruction_set[AND_INDIRECT_Y] = {exec_and, 2, 5};
+
+	instruction_set[ASL_ACCUMULATOR] = {exec_asl, 1, 2	};
+	instruction_set[ASL_ZERO_PAGE] = {exec_asl, 2, 5};
+	instruction_set[ASL_ZERO_PAGE_X] = {exec_asl, 2, 6};
+	instruction_set[ASL_ABSOLUTE] = {exec_asl, 3, 6};
+	instruction_set[ASL_ABSOLUTE_X] = {exec_asl, 3, 7};
 }

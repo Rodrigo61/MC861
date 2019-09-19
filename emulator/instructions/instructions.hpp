@@ -122,4 +122,10 @@ void exec_ph(instruction ins);
 
 void exec_pl(instruction ins);
 
+// Logical
+
 void exec_transfer(instruction ins);
+
+void exec_and(instruction ins);
+
+void exec_asl(instruction ins);
