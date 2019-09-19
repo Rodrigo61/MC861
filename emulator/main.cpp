@@ -13,7 +13,7 @@ int main(int argc, const char *argv[])
 
 	mcu.load_nes_rom(argv[1]);
 
-	registers.pc = build_dword(mcu.load_absolute(RESET_ADDRESS_HIGH), mcu.load_absolute(RESET_ADDRESS_LOW));
+	registers.pc = build_dword(mcu.load_absolute(RESET_ADDRESS_HIGH).second, mcu.load_absolute(RESET_ADDRESS_LOW).second);
 
 	long long cycle_count = 0;
 

@@ -19,9 +19,9 @@ void write_log(uint16_t addr, uint8_t data)
 instruction decode_next_instruction()
 {
 	instruction ins;
-	ins.opcode = mcu.load_absolute(registers.pc);
+	ins.opcode = mcu.load_absolute(registers.pc).second;
 	for (uint16_t i = 1; i < instruction_set[ins.opcode].num_bytes; i++)
-		ins.argv[i - 1] = mcu.load_absolute((uint16_t)(registers.pc + i));
+		ins.argv[i - 1] = mcu.load_absolute((uint16_t)(registers.pc + i)).second;
 
 	return ins;
 }

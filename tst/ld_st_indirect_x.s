@@ -9,10 +9,20 @@ MIRRORING = %0001 ;%0000 = horizontal, %0001 = vertical, %1000 = four-screen
 ; Variables
 ;################################################################
 
-	.enum $0000
-
+	.enum $00fe
+var1: .dsb 1
+var2: .dsb 1
 	.ende
 
+	.enum $0000
+var3: .dsb 1
+var4: .dsb 1
+	.ende
+
+	.enum $07ab
+label1:	.dsb 1
+label2:	.dsb 1
+	.ende
 ;################################################################
 ; iNES header
 ;################################################################
@@ -33,20 +43,30 @@ MIRRORING = %0001 ;%0000 = horizontal, %0001 = vertical, %1000 = four-screen
 ; RESET
 ;################################################################
 reset:
-	lda value1
-	lda value2
-	lda value3
-	lda value4
-	brk
+	lda #<label1
+	sta var1
+	lda #>label1
+	sta var2
+	lda #<label2
+	sta var3
+	lda #>label2
+	sta var4
+	lda #$0
 
-value1:
-	.db $fa
-value2:
-	.db $00
-value3:
-	.db $0f
-value4:
-	.db $00
+	ldx #0
+	lda #$01
+	sta (var1, X)
+	ldx #2
+	lda #$f2
+	sta (var1, X)
+	lda #0
+
+	ldx #0
+	lda (var1, X)
+	ldx #2
+	lda (var1, X)
+
+	brk
 
 ;################################################################
 ; interrupt vectors

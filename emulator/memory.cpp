@@ -1,4 +1,5 @@
 #include "memory.hpp"
+#include "cpu.hpp"
 
 memory_control_unit::memory_control_unit()
 {
@@ -44,15 +45,122 @@ void memory_control_unit::load_nes_rom(string rom_path)
 	}
 }
 
-uint8_t memory_control_unit::load_absolute(uint16_t address)
+pair<uint16_t, uint8_t> memory_control_unit::load_absolute(uint16_t address)
 {
 	if (address >= ROM_BASE)
-		return rom[address - ROM_BASE];
+		return {address, rom[address - ROM_BASE]};
 	else if (address < RAM_SIZE)
-		return ram[address];
+		return {address, ram[address]};
 	else
 	{
+		// TODO: how to handle this case?
 		cerr << "Invalid memory access at address " << address << endl;
-		return 0;
+		return {address, 0};
 	}
+}
+
+pair<uint16_t, uint8_t> memory_control_unit::load_absolute_x(uint16_t address)
+{
+	return load_absolute((uint16_t)(address + registers.x));
+}
+
+pair<uint16_t, uint8_t> memory_control_unit::load_absolute_y(uint16_t address)
+{
+	return load_absolute((uint16_t)(address + registers.y));
+}
+
+pair<uint16_t, uint8_t> memory_control_unit::load_zero_page(uint8_t zero_page_address)
+{
+	return load_absolute(build_dword(0x00, zero_page_address));
+}
+
+pair<uint16_t, uint8_t> memory_control_unit::load_zero_page_x(uint8_t zero_page_address)
+{
+	return load_absolute(build_dword(0x00, (uint8_t)(zero_page_address + registers.x)));
+}
+
+pair<uint16_t, uint8_t> memory_control_unit::load_zero_page_y(uint8_t zero_page_address)
+{
+	return load_absolute(build_dword(0x00, (uint8_t)(zero_page_address + registers.y)));
+}
+
+pair<uint16_t, uint8_t> memory_control_unit::load_indirect_x(uint8_t zero_page_address)
+{
+	uint16_t address = build_dword(load_zero_page_x((uint8_t)(zero_page_address + 1)).second, load_zero_page_x(zero_page_address).second);
+	return load_absolute(address);
+}
+
+pair<uint16_t, uint8_t> memory_control_unit::load_indirect_y(uint8_t zero_page_address)
+{
+	uint16_t address = build_dword(load_zero_page((uint8_t)(zero_page_address + 1)).second, load_zero_page(zero_page_address).second);
+	return load_absolute_y(address);
+}
+
+uint16_t memory_control_unit::store_absolute(uint16_t address, uint8_t data)
+{
+	if (address >= ROM_BASE)
+	{
+		// TODO: how to handle this case?
+		cerr << "Invalid memory store at read-only address " << address << endl;
+	}
+	else if (address < RAM_SIZE)
+	{
+		ram[address] = data;
+	}
+	else
+	{
+		// TODO: how to handle this case?
+		cerr << "Invalid memory store at address " << address << endl;
+	}
+
+	return address;
+}
+
+uint16_t memory_control_unit::store_absolute_x(uint16_t address, uint8_t data)
+{
+	address = load_absolute_x(address).first;
+	store_absolute(address, data);
+	return address;
+}
+
+uint16_t memory_control_unit::store_absolute_y(uint16_t address, uint8_t data)
+{
+	address = load_absolute_y(address).first;
+	store_absolute(address, data);
+	return address;
+}
+
+uint16_t memory_control_unit::store_zero_page(uint8_t zero_page_address, uint8_t data)
+{
+	uint16_t address = load_zero_page(zero_page_address).first;
+	store_absolute(address, data);
+	return address;
+}
+
+uint16_t memory_control_unit::store_zero_page_x(uint8_t zero_page_address, uint8_t data)
+{
+	uint16_t address = load_zero_page_x(zero_page_address).first;
+	store_absolute(address, data);
+	return address;
+}
+
+uint16_t memory_control_unit::store_zero_page_y(uint8_t zero_page_address, uint8_t data)
+{
+	uint16_t address = load_zero_page_y(zero_page_address).first;
+	store_absolute(address, data);
+	return address;
+}
+
+uint16_t memory_control_unit::store_indirect_x(uint8_t zero_page_address, uint8_t data)
+{
+	uint16_t address = load_indirect_x(zero_page_address).first;
+	store_absolute(address, data);
+	return address;
+}
+
+uint16_t memory_control_unit::store_indirect_y(uint8_t zero_page_address, uint8_t data)
+{
+	uint16_t address = load_indirect_y(zero_page_address).first;
+	store_absolute(address, data);
+	return address;
 }
