@@ -46,4 +46,12 @@ void build_instruction_set()
 
 	instruction_set[PLA] = {exec_pl, 1, 4};
 	instruction_set[PLP] = {exec_pl, 1, 4};
+
+	instruction_set[TAX] = {transfer, 1, 2};
+	instruction_set[TXA] = {transfer, 1, 2};
+	instruction_set[TAY] = {transfer, 1, 2};
+	instruction_set[TYA] = {transfer, 1, 2};
+	instruction_set[TSX] = {transfer, 1, 2};
+	instruction_set[TXS] = {transfer, 1, 2};
+
 }
