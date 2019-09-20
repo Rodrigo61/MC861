@@ -21,10 +21,11 @@ int main(int argc, const char *argv[])
 	{
 		instruction ins = decode_next_instruction();
 
+		registers.pc = (uint16_t)(registers.pc + instruction_set[ins.opcode].num_bytes);
+		
 		instruction_set[ins.opcode].exec(ins);
 
 		cycle_count += instruction_set[ins.opcode].num_cycles;
 
-		registers.pc = (uint16_t)(registers.pc + instruction_set[ins.opcode].num_bytes);
 	}
 }
