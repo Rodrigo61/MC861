@@ -176,7 +176,7 @@ void exec_shift(instruction ins){
     case ASL_ZERO_PAGE_X:
     case ASL_ABSOLUTE:
     case ASL_ABSOLUTE_X:
-      s_result = data<<1;
+      s_result = (uint8_t)(data << 1);
       // set carry flag
       registers.p.f.c = (((int)data*2 != (int)s_result) ? 1 : 0) & 1;
       break;
@@ -186,7 +186,7 @@ void exec_shift(instruction ins){
     case LSR_ZERO_PAGE_X:
     case LSR_ABSOLUTE:
     case LSR_ABSOLUTE_X:
-      s_result = data>>1;
+      s_result = (uint8_t)(data >> 1);
       // set carry flag - last bit of the original data
       registers.p.f.c = data & 1;
       break;
@@ -274,7 +274,7 @@ void exec_rotate(instruction ins){
     case ROL_ZERO_PAGE_X:
     case ROL_ABSOLUTE:
     case ROL_ABSOLUTE_X:
-      s_result = data<<1;
+      s_result = (uint8_t)(data << 1);
 
       tmp_carry = registers.p.f.c;
 
@@ -283,7 +283,7 @@ void exec_rotate(instruction ins){
 
       // last bit of s_result will always be 0. Hence, in order to s_result
       // have the old carry as last bit, it is enough to sum the old carry.
-      s_result += tmp_carry;
+      s_result = (uint8_t)(s_result + tmp_carry);
 
       break;
 
@@ -292,7 +292,7 @@ void exec_rotate(instruction ins){
     case ROR_ZERO_PAGE_X:
     case ROR_ABSOLUTE:
     case ROR_ABSOLUTE_X:
-      s_result = data>>1;
+      s_result = (uint8_t)(data >> 1);
 
       tmp_carry = registers.p.f.c;
 
@@ -302,7 +302,8 @@ void exec_rotate(instruction ins){
       // last bit of s_result will always be 0. Hence, in order to s_result
       // have the old carry as last bit, it is enough to sum the old tmp_carry
       // shifted 7 positions.
-      s_result += tmp_carry << 7;
+      tmp_carry = (uint8_t)(tmp_carry << 7);
+      s_result = (uint8_t)(s_result + tmp_carry);
 
       break;
 
