@@ -72,3 +72,5 @@ reset:
 	.dw 0
 	.dw reset
 	.dw 0
+
+	.dsb $2000
