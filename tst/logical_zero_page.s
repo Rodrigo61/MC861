@@ -38,29 +38,55 @@ var3: .dsb 1
 ; RESET
 ;################################################################
 reset:
-  lda #3
-  and #2  ; and
-  ora #1  ; or
-  eor #16 ; xor
+	; initial tests
+	lda #2
+	sta $fa
+	lda #1
+	sta $1b
+	lda #16
+	sta $cd
+
+	; and flags
+	lda #0
+	sta $fb
+	lda #-2
+	sta $1c
+
+	; ora flags
+	lda #0
+	sta $ce
+	lda #2
+	sta $fc
+
+	; eor flags
+	lda #13
+	sta $1d
+	lda #2
+	sta $cf
 
   lda #3
-  and #0  ; and zero flag
+  and $fa  ; and #2
+  ora $1b  ; or #1
+  eor $cd  ; xor #16
+
+  lda #3
+  and $fb  ; and zero flag #0
   lda #-1
   ldx #13
-  and #-2 ; and negative flag
+  and $1c ; and negative flag #-2
 
   lda #0
   ldx #16
-  ora #0   ; or zero flag
+  ora $ce   ; or zero flag #0
   lda #-15
   ldx #18
-  ora #2   ; or negative flag
+  ora $fc   ; or negative flag #2
 
   lda #13
-  eor #13   ; eor zero flag
+  eor $1d   ; eor zero flag #13
   lda #-1
   ldx #11
-  eor #2  ; eor negative flag
+  eor $cf  ; eor negative flag #2
 
 	brk
 
