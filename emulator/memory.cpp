@@ -53,9 +53,8 @@ pair<uint16_t, uint8_t> memory_control_unit::load_absolute(uint16_t address)
 		return {address, ram[address]};
 	else
 	{
-		// TODO: how to handle this case?
-		cerr << "Invalid memory access at address " << address << endl;
-		return {address, 0};
+		// Mirror RAM in remaining address space. TODO: write test?
+		return {address, ram[address % RAM_SIZE]};
 	}
 }
 
@@ -100,8 +99,7 @@ uint16_t memory_control_unit::store_absolute(uint16_t address, uint8_t data)
 {
 	if (address >= ROM_BASE)
 	{
-		// TODO: how to handle this case?
-		cerr << "Invalid memory store at read-only address " << address << endl;
+		// Write in ROM, do nothing. TODO: write test?
 	}
 	else if (address < RAM_SIZE)
 	{
@@ -109,8 +107,8 @@ uint16_t memory_control_unit::store_absolute(uint16_t address, uint8_t data)
 	}
 	else
 	{
-		// TODO: how to handle this case?
-		cerr << "Invalid memory store at address " << address << endl;
+		// Mirror RAM in remaining address space. TODO: write test?
+		ram[address % RAM_SIZE] = data;
 	}
 
 	return address;
