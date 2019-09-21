@@ -11,7 +11,7 @@ using namespace std;
 #define ROM_BASE 0x8000
 
 // Size of character memory. TODO: set this dynamically based on header.
-#define CHR_SIZE 0
+#define CHR_SIZE 0x2000
 
 // Size of iNES header.
 #define NES_HEADER_SIZE 16
@@ -59,6 +59,7 @@ public:
 	// The instruction contains the zero page location of the least significant byte of a 16 bit address.
 	// The Y register is dynamically added to this value to generated the actual target address for operation.
 	pair<uint16_t, uint8_t> load_indirect_y(uint8_t zero_page_address);
+
 
 	// Store instructions return the address where the data was stored.
 	uint16_t store_absolute(uint16_t address, uint8_t data);
