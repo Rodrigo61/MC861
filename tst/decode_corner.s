@@ -57,3 +57,5 @@ start:
 
 	.db $AD
 	.db 0
+
+	.dsb $2000
