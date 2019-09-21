@@ -47,11 +47,16 @@
 
 #define BRK 0x00
 
+#define JMP_ABSOLUTE 0x4C
+#define JMP_INDIRECT 0x6C
+
 struct instruction;
 
 void build_instruction_set();
 
 void exec_brk(instruction ins);
+
+void exec_jmp(instruction ins);
 
 void exec_ld(instruction ins);
 

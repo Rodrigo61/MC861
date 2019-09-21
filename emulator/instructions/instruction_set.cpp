@@ -4,6 +4,9 @@ void build_instruction_set()
 {
 	instruction_set[BRK] = {exec_brk, 1, 7};
 
+	instruction_set[JMP_ABSOLUTE] = {exec_jmp, 3, 3};
+	instruction_set[JMP_INDIRECT] = {exec_jmp, 3, 5};
+
 	instruction_set[LDA_IMMEDIATE] = {exec_ld_immediate, 2, 2};
 	instruction_set[LDA_ZERO_PAGE] = {exec_ld, 2, 3};
 	instruction_set[LDA_ZERO_PAGE_X] = {exec_ld, 2, 4};
