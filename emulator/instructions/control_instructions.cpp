@@ -24,3 +24,34 @@ void exec_jmp(instruction ins)
 
 	write_log();
 }
+
+void exec_branch(instruction ins)
+{
+	bool should_branch;
+	
+	switch (ins.opcode)
+	{
+	case BCC:
+		should_branch = registers.p.f.c == 0;
+		break;
+	case BNE:
+		should_branch = registers.p.f.z == 0;
+		break;
+	case BPL:
+		should_branch = registers.p.f.n == 0;
+		break;
+	case BVC:
+		should_branch = registers.p.f.v == 0;
+		break;
+	default:
+		assert(false);
+	}
+
+	if (should_branch)
+	{
+		uint8_t relative_offset = ins.argv[0];
+		registers.pc = uint16_t(registers.pc + relative_offset);
+	}
+		
+	write_log();
+}

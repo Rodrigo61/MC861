@@ -50,6 +50,12 @@
 #define JMP_ABSOLUTE 0x4C
 #define JMP_INDIRECT 0x6C
 
+#define BCC 0x90
+#define BNE 0xD0
+#define BPL 0x10
+#define BVC 0x50
+
+
 struct instruction;
 
 void build_instruction_set();
@@ -57,6 +63,8 @@ void build_instruction_set();
 void exec_brk(instruction ins);
 
 void exec_jmp(instruction ins);
+
+void exec_branch(instruction ins);
 
 void exec_ld(instruction ins);
 
