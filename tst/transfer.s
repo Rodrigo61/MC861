@@ -48,7 +48,7 @@ reset:
 	txs					; txs works
 	ldx #14
 	tsx					; tsx works
-	
+
 	ldx #0
 	lda #14
 	txa					; txa zero flag
@@ -88,3 +88,5 @@ reset:
 	.dw 0
 	.dw reset
 	.dw 0
+
+	.dsb $2000
