@@ -38,44 +38,55 @@ var3: .dsb 1
 ; RESET
 ;################################################################
 reset:
-	ldx #100
-	txa					; txa works
-	tay					; tay works
-	ldy #4
-	tya					; tya works
-	tax					; tax works
-	ldx #25
-	txs					; txs works
-	ldx #14
-	tsx					; tsx works
+	; initial tests
+	lda #2
+	sta $01fa
+	lda #1
+	sta $011b
+	lda #16
+	sta $01cd
 
-	ldx #0
-	lda #14
-	txa					; txa zero flag
-	ldx #14
-	tay					; tay zero flag
-	lda #14
-	tya					; tya zero flag
-	ldx #14
-	tax					; tax zero flag
-	lda #14
-	txs					; txs zero flag
-	ldx #14
-	tsx					; txs zero flag
+	; and flags
+	lda #0
+	sta $01fb
+	lda #-2
+	sta $011c
 
-	ldx #-3
-	lda #14
-	txa					; txa negative flag
-	ldx #14
-	tay					; tay negative flag
-	lda #14
-	tya					; tya negative flag
-	ldx #14
-	tax					; tax negative flag
-	lda #14
-	txs					; txs negative flag
-	ldx #14
-	tsx					; txs negative flag
+	; ora flags
+	lda #0
+	sta $01ce
+	lda #2
+	sta $01fc
+
+	; eor flags
+	lda #13
+	sta $011d
+	lda #2
+	sta $01cf
+
+  lda #3
+  and $01fa  ; and #2
+  ora $011b  ; or #1
+  eor $01cd  ; xor #16
+
+  lda #3
+  and $01fb  ; and zero flag #0
+  lda #-1
+  ldx #13
+  and $011c ; and negative flag #-2
+
+  lda #0
+  ldx #16
+  ora $01ce   ; or zero flag #0
+  lda #-15
+  ldx #18
+  ora $01fc   ; or negative flag #2
+
+  lda #13
+  eor $011d   ; eor zero flag #13
+  lda #-1
+  ldx #11
+  eor $01cf  ; eor negative flag #2
 
 	brk
 

@@ -38,44 +38,61 @@ var3: .dsb 1
 ; RESET
 ;################################################################
 reset:
-	ldx #100
-	txa					; txa works
-	tay					; tay works
-	ldy #4
-	tya					; tya works
-	tax					; tax works
-	ldx #25
-	txs					; txs works
-	ldx #14
-	tsx					; tsx works
+	; initial tests
+	ldx #0
+	lda #2
+	sta $fa, X
+	lda #1
+	sta $1b, X
+	lda #16
+	sta $cd, X
+
+	; and flags
+	lda #0
+	sta $fb, X
+	ldx #13
+	lda #-2
+	sta $1c, X
+
+	; ora flags
+	lda #0
+	ldx #16
+	sta $ce, X
+	lda #2
+	ldx #18
+	sta $fc, X
+
+	; eor flags
+	lda #13
+	sta $1d, X
+	lda #2
+	ldx #11
+	sta $cf, X
 
 	ldx #0
-	lda #14
-	txa					; txa zero flag
-	ldx #14
-	tay					; tay zero flag
-	lda #14
-	tya					; tya zero flag
-	ldx #14
-	tax					; tax zero flag
-	lda #14
-	txs					; txs zero flag
-	ldx #14
-	tsx					; txs zero flag
+  lda #3
+  and $fa, X  ; and #2
+  ora $1b, X  ; or #1
+  eor $cd, X  ; xor #16
 
-	ldx #-3
-	lda #14
-	txa					; txa negative flag
-	ldx #14
-	tay					; tay negative flag
-	lda #14
-	tya					; tya negative flag
-	ldx #14
-	tax					; tax negative flag
-	lda #14
-	txs					; txs negative flag
-	ldx #14
-	tsx					; txs negative flag
+  lda #3
+  and $fb, X  ; and zero flag #0
+  lda #-1
+  ldx #13
+  and $1c, X ; and negative flag #-2
+
+  lda #0
+  ldx #16
+  ora $ce, X   ; or zero flag #0
+  lda #-15
+  ldx #18
+  ora $fc, X   ; or negative flag #2
+
+  lda #13
+  eor $1d, X   ; eor zero flag #13
+  lda #-1
+  ldx #11
+  eor $cf, X   ; eor negative flag #2
 
 	brk
 
