@@ -26,10 +26,35 @@ instruction decode_next_instruction()
 	return ins;
 }
 
+uint8_t bitmask(uint8_t n){
+	return 1 << n;
+}
+
 void set_zero_flag(uint8_t data)
 {
 	// Explicitly acknowledge you do not need the excess bits to solve warning.
 	registers.p.f.z = ((data == 0) ? 1 : 0) & 1;
+}
+
+void set_carry_flag(uint8_t data){
+	registers.p.f.c = ((data != 0) ? 1 : 0) & 1;
+}
+
+void test_carry(uint8_t a, uint8_t b){
+	uint16_t r = (uint16_t) a + (uint16_t) b;
+	registers.p.f.c = ((r >= 255) ? 1 : 0) & 1;
+}
+
+void set_overflow_flag(uint8_t data){
+	registers.p.f.v = ((data != 0) ? 1 : 0) & 1;
+}
+
+void test_overflow(uint8_t m, uint8_t n,uint8_t result){
+	registers.p.f.v = (m^result)&(n^result)&0x80;
+}
+
+void set_decimal_flag(uint8_t data){
+	registers.p.f.d = (((data != 0)) ? 1 : 0) & 1;
 }
 
 void set_negative_flag(uint8_t data)

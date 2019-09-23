@@ -47,6 +47,11 @@
 
 #define BRK 0x00
 
+#define INC_ZEROPAGE 0xE6
+#define INC_ZEROPAGE_X 0xF6
+#define INC_ABSOLUTE 0xEE
+#define INC_ABSOLUTE_X 0xFE
+
 struct instruction;
 
 void build_instruction_set();

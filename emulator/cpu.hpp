@@ -51,6 +51,9 @@ struct opcode_definition
 	uint16_t num_cycles;	   // Number of cycles used by instructions of this opcode.
 };
 
+// Bitmask for nth bit
+uint8_t bitmask(uint8_t n);
+
 // Array where instruction_set[i] defines what should happen for opcode i.
 extern opcode_definition instruction_set[];
 
@@ -71,6 +74,18 @@ instruction decode_next_instruction();
 
 // Sets or resets zero flag based on the given data.
 void set_zero_flag(uint8_t data);
+
+
+// Sets or resets carry flag based on the given data.
+void set_carry_flag(uint8_t data);
+
+
+// Sets or resets overflow flag based on the given data.
+void set_overflow_flag(uint8_t data);
+
+
+// Sets or resets decimal flag based on the given data.
+void set_decimal_flag(uint8_t data);
 
 // Sets or resets negative flag based on the given data.
 void set_negative_flag(uint8_t data);
