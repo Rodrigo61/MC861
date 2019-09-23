@@ -41,54 +41,78 @@ reset:
 	; initial tests
 	ldy #10
 
+	ldx #0
 	lda #2
-	sta $01fa
+	sta $3a
+	lda #$3a
+	sta $fe,X
 	lda #1
-	sta $011b
+	sta $3b
+	lda #$3b
+	sta $1b,X
 	lda #16
-	sta $01cd
+	sta $3c
+	lda #$3c
+	sta $cd,X
 
 	; and flags
 	lda #0
-	sta $01fb
+	sta $3d
+	lda #$3d
+	sta $fb,X
+	ldx #13
 	lda #-2
-	sta $011c
+	sta $3e
+	lda #$3e
+	sta $1c,X
 
 	; ora flags
 	lda #0
-	sta $01ce
+	ldx #16
+	sta $3f
+	lda #$3f
+	sta $ce,X
 	lda #2
-	sta $01fc
+	ldx #18
+	sta $31
+	lda #$31
+	sta $fc,X
 
 	; eor flags
 	lda #13
-	sta $011d
+	sta $32
+	lda #$32
+	sta $1d,X
 	lda #2
-	sta $01cf
+	ldx #11
+	sta $33
+	lda #$33
+	sta $cf,X
+
+	ldx #0
+  lda #3
+  and ($fe,X)  ; and #2
+  ora ($1b,X)  ; or #1
+  eor ($cd,X)  ; xor #16
 
   lda #3
-  and $01fa  ; and #2
-  ora $011b  ; or #1
-  eor $01cd  ; xor #16
-
-  lda #3
-  and $01fb  ; and zero flag #0
+  and ($fb,X)  ; and zero flag #0
   lda #-1
   ldx #13
-  and $011c ; and negative flag #-2
+  and ($1c,X) ; and negative flag #-2
 
   lda #0
   ldx #16
-  ora $01ce   ; or zero flag #0
+  ora ($ce,X)   ; or zero flag #0
   lda #-15
   ldx #18
-  ora $01fc   ; or negative flag #2
+  ora ($fc,X)   ; or negative flag #2
 
   lda #13
-  eor $011d   ; eor zero flag #13
+  eor ($1d,X)   ; eor zero flag #13
   lda #-1
   ldx #11
-  eor $01cf  ; eor negative flag #2
+  eor ($cf,X)   ; eor negative flag #2
 
 	brk
 

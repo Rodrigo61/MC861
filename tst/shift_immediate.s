@@ -38,57 +38,39 @@ var3: .dsb 1
 ; RESET
 ;################################################################
 reset:
-	; initial tests
-	ldy #10
+	ldx #$aa
+	
+	; asl
+	lda #$8
+	asl
 
-	lda #2
-	sta $01fa
-	lda #1
-	sta $011b
-	lda #16
-	sta $01cd
+	; asl carry flag
+	lda #$fa
+	asl
 
-	; and flags
-	lda #0
-	sta $01fb
-	lda #-2
-	sta $011c
+	; asl zero flag
+	lda #$80
+	asl
 
-	; ora flags
-	lda #0
-	sta $01ce
-	lda #2
-	sta $01fc
+	; asl negative_flag
+	lda #$7a
+	asl
 
-	; eor flags
-	lda #13
-	sta $011d
-	lda #2
-	sta $01cf
+	; lsr
+	lda #$8
+	lsr
 
-  lda #3
-  and $01fa  ; and #2
-  ora $011b  ; or #1
-  eor $01cd  ; xor #16
+	; lsr carry flag
+	lda #$3
+	lsr
 
-  lda #3
-  and $01fb  ; and zero flag #0
-  lda #-1
-  ldx #13
-  and $011c ; and negative flag #-2
+	; lsr zero flag
+	lda #$1
+	lsr
 
-  lda #0
-  ldx #16
-  ora $01ce   ; or zero flag #0
-  lda #-15
-  ldx #18
-  ora $01fc   ; or negative flag #2
-
-  lda #13
-  eor $011d   ; eor zero flag #13
-  lda #-1
-  ldx #11
-  eor $01cf  ; eor negative flag #2
+	; lsr negative_flag
+	lda #$f0
+	lsr
 
 	brk
 

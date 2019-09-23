@@ -38,57 +38,56 @@ var3: .dsb 1
 ; RESET
 ;################################################################
 reset:
-	; initial tests
-	ldy #10
+	ldx $aa
 
-	lda #2
-	sta $01fa
-	lda #1
-	sta $011b
-	lda #16
-	sta $01cd
+	lda #$8
+	sta $a1, X
+	lda #$fa
+	sta $a3, X
+	lda #$80
+	sta $a5, X
+	lda #$7a
+	sta $a7, X
+	lda #$8
+	sta $a9, X
+	lda #$3
+	sta $ab, X
+	lda #$1
+	sta $ad, X
+	lda #$f0
+	sta $af, X
 
-	; and flags
-	lda #0
-	sta $01fb
-	lda #-2
-	sta $011c
+	; asl
+	lda $a1, X
+	asl
 
-	; ora flags
-	lda #0
-	sta $01ce
-	lda #2
-	sta $01fc
+	; asl carry flag
+	lda $a3, X
+	asl
 
-	; eor flags
-	lda #13
-	sta $011d
-	lda #2
-	sta $01cf
+	; asl zero flag
+	lda $a5, X
+	asl
 
-  lda #3
-  and $01fa  ; and #2
-  ora $011b  ; or #1
-  eor $01cd  ; xor #16
+	; asl negative_flag
+	lda $a7, X
+	asl
 
-  lda #3
-  and $01fb  ; and zero flag #0
-  lda #-1
-  ldx #13
-  and $011c ; and negative flag #-2
+	; lsr
+	lda $a9, X
+	lsr
 
-  lda #0
-  ldx #16
-  ora $01ce   ; or zero flag #0
-  lda #-15
-  ldx #18
-  ora $01fc   ; or negative flag #2
+	; lsr carry flag
+	lda $ab, X
+	lsr
 
-  lda #13
-  eor $011d   ; eor zero flag #13
-  lda #-1
-  ldx #11
-  eor $01cf  ; eor negative flag #2
+	; lsr zero flag
+	lda $ad, X
+	lsr
+
+	; lsr negative_flag
+	lda $af, X
+	lsr
 
 	brk
 

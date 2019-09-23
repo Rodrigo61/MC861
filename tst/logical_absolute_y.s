@@ -41,54 +41,60 @@ reset:
 	; initial tests
 	ldy #10
 
+	ldx #0
 	lda #2
-	sta $01fa
+	sta $01fe, Y
 	lda #1
-	sta $011b
+	sta $011b, Y
 	lda #16
-	sta $01cd
+	sta $01cd, Y
 
 	; and flags
 	lda #0
-	sta $01fb
+	sta $01fb, Y
+	ldx #13
 	lda #-2
-	sta $011c
+	sta $011c, Y
 
 	; ora flags
 	lda #0
-	sta $01ce
+	ldx #16
+	sta $01ce, Y
 	lda #2
-	sta $01fc
+	ldx #18
+	sta $01fc, Y
 
 	; eor flags
 	lda #13
-	sta $011d
+	sta $011d, Y
 	lda #2
-	sta $01cf
+	ldx #11
+	sta $01cf, Y
+
+	ldx #0
+  lda #3
+  and $01fe, Y  ; and #2
+  ora $011b, Y  ; or #1
+  eor $01cd, Y  ; xor #16
 
   lda #3
-  and $01fa  ; and #2
-  ora $011b  ; or #1
-  eor $01cd  ; xor #16
-
-  lda #3
-  and $01fb  ; and zero flag #0
+  and $01fb, Y  ; and zero flag #0
   lda #-1
   ldx #13
-  and $011c ; and negative flag #-2
+  and $011c, Y ; and negative flag #-2
 
   lda #0
   ldx #16
-  ora $01ce   ; or zero flag #0
+  ora $01ce, Y   ; or zero flag #0
   lda #-15
   ldx #18
-  ora $01fc   ; or negative flag #2
+  ora $01fc, Y   ; or negative flag #2
 
   lda #13
-  eor $011d   ; eor zero flag #13
+  eor $011d, Y   ; eor zero flag #13
   lda #-1
   ldx #11
-  eor $01cf  ; eor negative flag #2
+  eor $01cf, Y   ; eor negative flag #2
 
 	brk
 

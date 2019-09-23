@@ -38,57 +38,57 @@ var3: .dsb 1
 ; RESET
 ;################################################################
 reset:
-	; initial tests
-	ldy #10
+	ldx #$aa
 
-	lda #2
-	sta $01fa
-	lda #1
-	sta $011b
-	lda #16
-	sta $01cd
+	lda #$8
+	sta $0ba1
+	lda #$fa
+	sta $0ba3
+	lda #$80
+	sta $0ba5
+	lda #$7a
+	sta $0ba7
+	lda #$8
+	sta $0ba9
+	lda #$3
+	sta $0bab
+	lda #$1
+	sta $0bad
+	lda #$f0
+	sta $0baf
 
-	; and flags
-	lda #0
-	sta $01fb
-	lda #-2
-	sta $011c
 
-	; ora flags
-	lda #0
-	sta $01ce
-	lda #2
-	sta $01fc
+	; asl
+	lda $0ba1
+	asl
 
-	; eor flags
-	lda #13
-	sta $011d
-	lda #2
-	sta $01cf
+	; asl carry flag
+	lda $0ba3
+	asl
 
-  lda #3
-  and $01fa  ; and #2
-  ora $011b  ; or #1
-  eor $01cd  ; xor #16
+	; asl zero flag
+	lda $0ba5
+	asl
 
-  lda #3
-  and $01fb  ; and zero flag #0
-  lda #-1
-  ldx #13
-  and $011c ; and negative flag #-2
+	; asl negative_flag
+	lda $0ba7
+	asl
 
-  lda #0
-  ldx #16
-  ora $01ce   ; or zero flag #0
-  lda #-15
-  ldx #18
-  ora $01fc   ; or negative flag #2
+	; lsr
+	lda $0ba9
+	lsr
 
-  lda #13
-  eor $011d   ; eor zero flag #13
-  lda #-1
-  ldx #11
-  eor $01cf  ; eor negative flag #2
+	; lsr carry flag
+	lda $0bab
+	lsr
+
+	; lsr zero flag
+	lda $0bad
+	lsr
+
+	; lsr negative_flag
+	lda $0baf
+	lsr
 
 	brk
 
