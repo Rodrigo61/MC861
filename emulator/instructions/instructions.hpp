@@ -47,6 +47,12 @@
 
 #define BRK 0x00
 
+#define NOP 0xEA
+
+#define SEI 0x78
+#define CLI 0x58
+
+
 #define JMP_ABSOLUTE 0x4C
 #define JMP_INDIRECT 0x6C
 
@@ -61,6 +67,10 @@ struct instruction;
 void build_instruction_set();
 
 void exec_brk(instruction ins);
+
+void exec_nop(instruction ins);
+
+void change_I_flag(instruction ins);
 
 void exec_jmp(instruction ins);
 

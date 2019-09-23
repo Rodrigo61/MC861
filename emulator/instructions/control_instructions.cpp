@@ -2,7 +2,7 @@
 
 void exec_brk(instruction ins)
 {
-	assert(ins.opcode == 0);
+	assert(ins.opcode == BRK); // to prevent for warnings
 	exit(0);
 }
 
@@ -53,5 +53,21 @@ void exec_branch(instruction ins)
 		registers.pc = uint16_t(registers.pc + relative_offset);
 	}
 		
+	write_log();
+}
+
+void exec_nop(instruction ins)
+{
+	assert(ins.opcode == NOP); // to prevent for warnings
+	write_log();
+}
+
+void change_I_flag(instruction ins)
+{
+	if (ins.opcode == SEI)
+		registers.p.f.i = 1;
+	else
+		registers.p.f.i = 0;
+	
 	write_log();
 }

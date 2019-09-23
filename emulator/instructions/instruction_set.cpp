@@ -3,6 +3,11 @@
 void build_instruction_set()
 {
 	instruction_set[BRK] = {exec_brk, 1, 7};
+	
+	instruction_set[NOP] = {exec_nop, 1, 2};
+
+	instruction_set[SEI] = {change_I_flag, 1, 2};
+	instruction_set[CLI] = {change_I_flag, 1, 2};
 
 	instruction_set[JMP_ABSOLUTE] = {exec_jmp, 3, 3};
 	instruction_set[JMP_INDIRECT] = {exec_jmp, 3, 5};
