@@ -25,6 +25,25 @@ void exec_jmp(instruction ins)
 	write_log();
 }
 
+void exec_jsr(instruction ins)
+{
+	push_pc_to_stack();
+	
+	uint16_t address = build_dword(ins.argv[1], ins.argv[0]);
+	registers.pc = (uint16_t)(address);
+
+	write_log();
+}
+
+void exec_rts(instruction ins)
+{
+	assert(ins.opcode == RTS); // to prevent for warnings
+	
+	pull_pc_from_stack();
+
+	write_log();
+}
+
 void exec_branch(instruction ins)
 {
 	bool should_branch;
@@ -80,6 +99,16 @@ void change_I_flag(instruction ins)
 		registers.p.f.i = 1;
 	else
 		registers.p.f.i = 0;
+	
+	write_log();
+}
+
+void exec_rti(instruction ins)
+{
+	assert(ins.opcode == RTI); // to prevent for warnings
+	
+	pull_p_from_stack();	
+	pull_pc_from_stack();
 	
 	write_log();
 }

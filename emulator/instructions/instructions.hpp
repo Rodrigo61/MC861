@@ -52,9 +52,13 @@
 #define SEI 0x78
 #define CLI 0x58
 
-
 #define JMP_ABSOLUTE 0x4C
 #define JMP_INDIRECT 0x6C
+
+#define JSR 0x20
+#define RTS 0x60
+
+#define RTI 0x40
 
 #define BCC 0x90
 #define BCS 0xB0
@@ -77,6 +81,10 @@ void exec_nop(instruction ins);
 void change_I_flag(instruction ins);
 
 void exec_jmp(instruction ins);
+
+void exec_jsr(instruction ins);
+
+void exec_rts(instruction ins);
 
 void exec_branch(instruction ins);
 

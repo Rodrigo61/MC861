@@ -12,6 +12,9 @@ void build_instruction_set()
 	instruction_set[JMP_ABSOLUTE] = {exec_jmp, 3, 3};
 	instruction_set[JMP_INDIRECT] = {exec_jmp, 3, 5};
 
+	instruction_set[JSR] = {exec_jsr, 3, 6};
+	instruction_set[RTS] = {exec_rts, 1, 6};
+
 	instruction_set[BCC] = {exec_branch, 2, 2}; 
 	instruction_set[BCS] = {exec_branch, 2, 2}; 
 	instruction_set[BNE] = {exec_branch, 2, 2}; 
