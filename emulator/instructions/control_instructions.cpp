@@ -80,7 +80,7 @@ void exec_branch(instruction ins)
 
 	if (should_branch)
 	{
-		uint8_t relative_offset = ins.argv[0];
+		int8_t relative_offset = int8_t(ins.argv[0]);
 		registers.pc = uint16_t(registers.pc + relative_offset);
 	}
 		
