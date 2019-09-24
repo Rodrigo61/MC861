@@ -1,46 +1,269 @@
 #include "instructions.hpp"
 
 
-void exec_adc(instruction ins){	
-   
+
+void test_flags(uint8_t m,uint8_t n,uint8_t result){
+    test_overflow(m,n,result);
+    test_carry(m,n);
+    set_negative_flag(result);
+    set_zero_flag(result);
 }
 
+void cmp_family_test_and_set(uint8_t data,uint8_t acc){
+    if(acc < data){
+        set_carry_flag(0);
+        set_zero_flag(0);
+        set_negative_flag(data);
+    }else if(acc == data){
+        set_carry_flag(1);
+        set_zero_flag(1);
+        set_negative_flag(0);
+    }else if(acc > data){
+        set_carry_flag(1);
+        set_zero_flag(0);
+        set_negative_flag(data);
+    }
+}
+
+void exec_adc(instruction ins){	
+    uint16_t address;
+    uint8_t data;
+    uint8_t acc = registers.a;
+    switch(ins.opcode){
+        case ADC_ZEROPAGE:
+            tie(address,data) = mcu.load_zero_page(ins.argv[0]);
+            break;
+        case ADC_ZEROPAGE_X:
+            tie(address,data) = mcu.load_zero_page_x(ins.argv[0]);
+            break;
+        case ADC_ABSOLUTE:
+            tie(address,data) = mcu.load_absolute(ins.argv[0]);
+            break;
+        case ADC_ABSOLUTE_X:
+            tie(address,data) = mcu.load_absolute_x(ins.argv[0]);
+            break;
+        case ADC_ABSOLUTE_Y:
+            tie(address,data) = mcu.load_absolute_y(ins.argv[0]);
+            break;
+        case ADC_INDIRECT_X:
+            tie(address,data) = mcu.load_indirect_x(ins.argv[0]);
+            break;
+        case ADC_INDIRECT_Y:
+            tie(address,data) = mcu.load_indirect_y(ins.argv[0]);
+            break;
+        default:
+            break;
+    }
+    registers.a += data;
+    test_flags(data,acc,registers.a);
+	write_log(address,data);
+}
+
+void exec_adc_immediate(instruction ins){
+    uint8_t data = ins.argv[0];
+	uint8_t acc = registers.a;
+    registers.a += data;
+    test_flags(data,acc,registers.a);
+    write_log();
+}
+
+
+void exec_sbc(instruction ins){	
+    uint16_t address;
+    uint8_t data;
+    uint8_t acc = registers.a;
+    switch(ins.opcode){
+        case SBC_ZEROPAGE:
+            tie(address,data) = mcu.load_zero_page(ins.argv[0]);
+            break;
+        case SBC_ZEROPAGE_X:
+            tie(address,data) = mcu.load_zero_page_x(ins.argv[0]);
+            break;
+        case SBC_ABSOLUTE:
+            tie(address,data) = mcu.load_absolute(ins.argv[0]);
+            break;
+        case SBC_ABSOLUTE_X:
+            tie(address,data) = mcu.load_absolute_x(ins.argv[0]);
+            break;
+        case SBC_ABSOLUTE_Y:
+            tie(address,data) = mcu.load_absolute_y(ins.argv[0]);
+            break;
+        case SBC_INDIRECT_X:
+            tie(address,data) = mcu.load_indirect_x(ins.argv[0]);
+            break;
+        case SBC_INDIRECT_Y:
+            tie(address,data) = mcu.load_indirect_y(ins.argv[0]);
+            break;
+        default:
+            break;
+    }
+    registers.a -= data;
+    test_flags(data,acc,registers.a);
+    write_log(address,data);
+}
+
+void exec_sbc_immediate(instruction ins){
+    uint8_t data = ins.argv[0];
+	uint8_t acc = registers.a;
+    registers.a -= data;
+    test_flags(data,acc,registers.a);
+    write_log();
+}
+
+
 void exec_clc(instruction ins){
+    assert(ins.opcode != 0);
     set_carry_flag(0);
+    write_log();
 }
 
 void exec_cld(instruction ins){
+    assert(ins.opcode != 0);
     set_decimal_flag(0);
+    write_log();
 }
 
 void exec_clv(instruction ins){
+    assert(ins.opcode != 0);
     set_overflow_flag(0);
+    write_log();
 }
 
 void exec_cmp(instruction ins){
-    
-}
-void exec_cpx(instruction ins){
-    
-}
-void exec_cpy(instruction ins){
-    
+    uint16_t address;
+	uint8_t data;
+    uint8_t acc = registers.a;
+    switch (ins.opcode)
+    {
+    case CMP_ABSOLUTE:
+        tie(address,data) = mcu.load_absolute(ins.argv[0]);
+        break;
+    case CMP_ABSOLUTE_X:
+        tie(address,data) = mcu.load_absolute_x(ins.argv[0]);
+        break;
+    case CMP_ABSOLUTE_Y:
+        tie(address,data) = mcu.load_absolute_y(ins.argv[0]);
+        break;
+    case CMP_INDIRECT_X:
+        tie(address,data) = mcu.load_indirect_x(ins.argv[0]);
+        break;
+    case CMP_INDIRECT_Y:
+        tie(address,data) = mcu.load_indirect_y(ins.argv[0]);
+        break;
+    case CMP_ZEROPAGE:
+        tie(address,data) = mcu.load_zero_page(ins.argv[0]);
+        break;
+    case CMP_ZEROPAGE_X:
+        tie(address,data) = mcu.load_zero_page_x(ins.argv[0]);
+        break;
+    default:
+        break;
+    }
+    cmp_family_test_and_set(data,acc);
+    write_log(address,data);
 }
 
+void exec_cmp_immediate(instruction ins){
+    uint8_t data = ins.argv[0];
+	uint8_t acc = registers.a;
+    cmp_family_test_and_set(data,acc);
+    write_log();
+}
+
+void exec_cpx(instruction ins){
+    uint16_t address;
+	uint8_t data;
+    uint8_t acc = registers.x;
+    switch (ins.opcode)
+    {
+    case CPX_ABSOLUTE:
+        tie(address,data) = mcu.load_absolute(ins.argv[0]);
+        break;
+    case CPX_ZEROPAGE:
+        tie(address,data) = mcu.load_zero_page(ins.argv[0]);
+        break;
+    default:
+        break;
+    }
+    cmp_family_test_and_set(data,acc);
+    write_log(address,data);
+}
+
+void exec_cpx_immediate(instruction ins){
+    uint8_t data = ins.argv[0];
+	uint8_t acc = registers.x;
+    cmp_family_test_and_set(data,acc);
+    write_log();
+}
+
+void exec_cpy(instruction ins){
+    uint16_t address;
+	uint8_t data;
+    uint8_t acc = registers.y;
+    switch (ins.opcode)
+    {
+    case CPX_ABSOLUTE:
+        tie(address,data) = mcu.load_absolute(ins.argv[0]);
+        break;
+    case CPX_ZEROPAGE:
+        tie(address,data) = mcu.load_zero_page(ins.argv[0]);
+        break;
+    default:
+        break;
+    }
+    cmp_family_test_and_set(data,acc);
+    write_log(address,data);
+}
+
+
+void exec_cpy_immediate(instruction ins){
+    uint8_t data = ins.argv[0];
+	uint8_t acc = registers.y;
+    cmp_family_test_and_set(data,acc);
+    write_log();
+}
+
+
 void exec_dec(instruction ins){
-    
+    uint16_t address;
+	uint8_t data;
+    switch(ins.opcode){
+        case DEC_ABSOLUTE:
+            tie(address,data) = mcu.load_absolute(ins.argv[0]);
+            break;
+        case DEC_ABSOLUTE_X:
+            tie(address,data) = mcu.load_absolute_x(ins.argv[0]);
+            break;
+        case DEC_ZEROPAGE:
+            tie(address,data) = mcu.load_zero_page(ins.argv[0]);
+            break;
+        case DEC_ZEROPAGE_X:
+            tie(address,data) = mcu.load_zero_page_x(ins.argv[0]);
+            break;
+        default:
+            break;
+    }
+    data--;
+    set_negative_flag(data);
+    set_zero_flag(data);
+    mcu.store_absolute(address,data);
+    write_log(address,data);
 }
 
 void exec_dex(instruction ins){    
+    assert(ins.opcode != 0);
     registers.x--;
     set_negative_flag(registers.x);
     set_zero_flag(registers.x);
+    write_log();
 }
 
-void exec_dey(instruction ins){    
+void exec_dey(instruction ins){
+    assert(ins.opcode != 0);    
     registers.y--;
     set_negative_flag(registers.y);
     set_zero_flag(registers.y);
+    write_log();
 }
 
 void exec_inc(instruction ins){
@@ -50,57 +273,49 @@ void exec_inc(instruction ins){
     {
     case INC_ZEROPAGE:
         tie(address,data) = mcu.load_zero_page(ins.argv[0]);
-        data++;
-        set_negative_flag(data);
-        set_zero_flag(data);
-        mcu.store_zero_page(address,data);
         break;    
     case INC_ZEROPAGE_X:
         tie(address,data) = mcu.load_zero_page_x(ins.argv[0]);
-        data++;
-        set_negative_flag(data);
-        set_zero_flag(data);
-        mcu.store_zero_page_x(address,data);
         break;
     case INC_ABSOLUTE:
         tie(address,data) = mcu.load_absolute(ins.argv[0]);
-        data++;
-        set_negative_flag(data);
-        set_zero_flag(data);
-        mcu.store_absolute(address,data);
         break;
     case INC_ABSOLUTE_X:
         tie(address,data) = mcu.load_absolute_x(ins.argv[0]);
-        data++;
-        set_negative_flag(data);
-        set_zero_flag(data);
-        mcu.store_absolute_x(address,data);
         break;
     default:
         break;
     }
+    data++;
+    set_negative_flag(data);
+    set_zero_flag(data);
+    mcu.store_absolute(address,data);
 }
 
 void exec_inx(instruction ins){
+    assert(ins.opcode != 0);
     registers.x++;
     set_negative_flag(registers.x);
     set_zero_flag(registers.x);
+    write_log();
 }
 
-void exec_iny(instruction ins){    
+void exec_iny(instruction ins){
+    assert(ins.opcode != 0);    
     registers.y++;
     set_negative_flag(registers.y);
     set_zero_flag(registers.y);
-}
-
-void exec_sbc(instruction ins){
-    
+    write_log();
 }
 
 void exec_sec(instruction ins){
+    assert(ins.opcode != 0);
     set_carry_flag(1);
+    write_log();
 }
 
 void exec_sed(instruction ins){
+    assert(ins.opcode != 0);
     set_decimal_flag(1);
+    write_log();
 }
