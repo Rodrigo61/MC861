@@ -40,11 +40,11 @@ label1:
     plp
 
     bcs label2
-	.db $00
-	.db $00
-	.db $00
-	.db $00
-	.db $00
+	nop
+	nop
+	nop
+	nop
+	nop
 
 label2:
 	brk

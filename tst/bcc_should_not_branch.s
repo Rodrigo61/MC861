@@ -34,12 +34,12 @@ flag: .dsb 1
 reset:
 
 label1:
-    ; Setting Zero flag
-    lda #%01000000
+    ; Setting Carry flag
+    lda #%00000001
     pha
     plp
 
-    bvs label2
+    bcc label2
 	nop
 	nop
 	nop

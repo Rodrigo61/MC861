@@ -35,11 +35,11 @@ reset:
 
 label1:
     ; Setting Zero flag
-    lda #%01000000
+    lda #%00000010
     pha
     plp
 
-    bvs label2
+    bne label2
 	nop
 	nop
 	nop

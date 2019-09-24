@@ -39,7 +39,7 @@ label1:
     pha
     plp
 
-    bvs label2
+    bvc label2
 	nop
 	nop
 	nop

@@ -42,11 +42,11 @@ reset:
 
 label1:
     jmp (IAL)
-    .db $00
-    .db $00
-    .db $00
-    .db $00
-    .db $00
+    nop
+	nop
+	nop
+	nop
+	nop
 
 label2:
 	brk
