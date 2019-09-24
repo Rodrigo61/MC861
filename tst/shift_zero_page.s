@@ -39,7 +39,7 @@ var3: .dsb 1
 ;################################################################
 reset:
 	ldx #$aa
-	
+
 	lda #$8
 	sta $a1
 	lda #$fa
@@ -57,38 +57,29 @@ reset:
 	lda #$f0
 	sta $af
 
-
 	; asl
-	lda $a1
-	asl
+	asl $a1
 
 	; asl carry flag
-	lda $a3
-	asl
+	asl $a3
 
 	; asl zero flag
-	lda $a5
-	asl
+	asl $a5
 
 	; asl negative_flag
-	lda $a7
-	asl
+	asl $a7
 
 	; lsr
-	lda $a9
-	lsr
+	lsr $a9
 
 	; lsr carry flag
-	lda $ab
-	lsr
+	lsr $ab
 
 	; lsr zero flag
-	lda $ad
-	lsr
+	lsr $ad
 
 	; lsr negative_flag
-	lda $af
-	lsr
+	lsr $af
 
 	brk
 

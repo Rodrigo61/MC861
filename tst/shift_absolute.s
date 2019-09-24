@@ -57,38 +57,29 @@ reset:
 	lda #$f0
 	sta $0baf
 
-
 	; asl
-	lda $0ba1
-	asl
+	asl $0ba1
 
 	; asl carry flag
-	lda $0ba3
-	asl
+	asl $0ba3
 
 	; asl zero flag
-	lda $0ba5
-	asl
+	asl $0ba5
 
 	; asl negative_flag
-	lda $0ba7
-	asl
+	asl $0ba7
 
 	; lsr
-	lda $0ba9
-	lsr
+	lsr $0ba9
 
 	; lsr carry flag
-	lda $0bab
-	lsr
+	lsr $0bab
 
 	; lsr zero flag
-	lda $0bad
-	lsr
+	lsr $0bad
 
 	; lsr negative_flag
-	lda $0baf
-	lsr
+	lsr $0baf
 
 	brk
 

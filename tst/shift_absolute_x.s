@@ -58,36 +58,28 @@ reset:
 	sta $0baf, X
 
 	; asl
-	lda $0ba1, X
-	asl
+	asl $0ba1, X
 
 	; asl carry flag
-	lda $0ba3, X
-	asl
+	asl $0ba3, X
 
 	; asl zero flag
-	lda $0ba5, X
-	asl
+	asl $0ba5, X
 
 	; asl negative_flag
-	lda $0ba7, X
-	asl
+	asl $0ba7, X
 
 	; lsr
-	lda $0ba9, X
-	lsr
+	lsr $0ba9, X
 
 	; lsr carry flag
-	lda $0bab, X
-	lsr
+	lsr $0bab, X
 
 	; lsr zero flag
-	lda $0bad, X
-	lsr
+	lsr $0bad, X
 
 	; lsr negative_flag
-	lda $0baf, X
-	lsr
+	lsr $0baf, X
 
 	brk
 

@@ -57,38 +57,29 @@ reset:
 	lda #$f0
 	sta $af
 
-
 	; rol
-	lda $a1
-	rol
+	rol $a1
 
 	; rol carry flag
-	lda $a3
-	rol
+	rol $a3
 
 	; rol zero flag
-	lda $a5
-	rol
+	rol $a5
 
 	; rol negative_flag
-	lda $a7
-	rol
+	rol $a7
 
 	; ror
-	lda $a9
-	ror
+	ror $a9
 
 	; ror carry flag
-	lda $ab
-	ror
+	ror $ab
 
 	; ror zero flag
-	lda $ad
-	ror
+	ror $ad
 
 	; ror negative_flag
-	lda $af
-	ror
+	ror $af
 
 	brk
 
