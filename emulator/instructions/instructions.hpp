@@ -57,9 +57,13 @@
 #define JMP_INDIRECT 0x6C
 
 #define BCC 0x90
+#define BCS 0xB0
 #define BNE 0xD0
+#define BEQ 0xF0
 #define BPL 0x10
+#define BMI 0x30
 #define BVC 0x50
+#define BVS 0x70
 
 
 struct instruction;

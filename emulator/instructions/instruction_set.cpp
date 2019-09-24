@@ -13,9 +13,13 @@ void build_instruction_set()
 	instruction_set[JMP_INDIRECT] = {exec_jmp, 3, 5};
 
 	instruction_set[BCC] = {exec_branch, 2, 2}; 
+	instruction_set[BCS] = {exec_branch, 2, 2}; 
 	instruction_set[BNE] = {exec_branch, 2, 2}; 
+	instruction_set[BEQ] = {exec_branch, 2, 2}; 
 	instruction_set[BPL] = {exec_branch, 2, 2}; 
+	instruction_set[BMI] = {exec_branch, 2, 2}; 
 	instruction_set[BVC] = {exec_branch, 2, 2}; 
+	instruction_set[BVS] = {exec_branch, 2, 2}; 
 
 	instruction_set[LDA_IMMEDIATE] = {exec_ld_immediate, 2, 2};
 	instruction_set[LDA_ZERO_PAGE] = {exec_ld, 2, 3};

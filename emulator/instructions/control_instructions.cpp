@@ -34,14 +34,26 @@ void exec_branch(instruction ins)
 	case BCC:
 		should_branch = registers.p.f.c == 0;
 		break;
+	case BCS:
+		should_branch = registers.p.f.c == 1;
+		break;
 	case BNE:
 		should_branch = registers.p.f.z == 0;
+		break;
+	case BEQ:
+		should_branch = registers.p.f.z == 1;
 		break;
 	case BPL:
 		should_branch = registers.p.f.n == 0;
 		break;
+	case BMI:
+		should_branch = registers.p.f.n == 1;
+		break;
 	case BVC:
 		should_branch = registers.p.f.v == 0;
+		break;
+	case BVS:
+		should_branch = registers.p.f.v == 1;
 		break;
 	default:
 		assert(false);
