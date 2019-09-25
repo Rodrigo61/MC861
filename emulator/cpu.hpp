@@ -74,3 +74,10 @@ void set_zero_flag(uint8_t data);
 
 // Sets or resets negative flag based on the given data.
 void set_negative_flag(uint8_t data);
+
+// Set of functions to push and pull registers's value from the stack.
+// PULL modify the correspondent register
+void pull_p_from_stack();
+void push_p_to_stack();
+void pull_pc_from_stack();
+void push_pc_to_stack();

@@ -5,6 +5,16 @@ uint16_t build_dword(uint8_t high_byte, uint8_t low_byte)
 	return (uint16_t)((((uint16_t)high_byte) << 8) | ((uint16_t)low_byte));
 }
 
+uint8_t get_low(uint16_t data)
+{
+	return uint8_t(data);
+}
+
+uint8_t get_high(uint16_t data)
+{
+	return uint8_t(data >> 8);
+}
+
 void printls(uint8_t a, uint8_t x, uint8_t y, uint16_t sp, uint16_t pc, uint8_t p, uint16_t addr, uint8_t data)
 {
 	cout << setfill('0')
