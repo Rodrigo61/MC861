@@ -47,9 +47,11 @@ reset:
 	lda #$8
 	bit $ba
 
-	lda #$f1
+	lda #$80
 	sta $ba
 	lda #$8
+	bit $ba
+	lsr $ba
 	bit $ba
 
 	brk

@@ -230,7 +230,7 @@ void exec_shift(instruction ins){
       write_log();
       break;
     default:
-      write_log(address, data);
+      write_log(address, s_result);
       break;
   }
 }
@@ -346,7 +346,7 @@ void exec_rotate(instruction ins){
       write_log();
       break;
     default:
-      write_log(address, data);
+      write_log(address, s_result);
       break;
   }
 }
@@ -372,6 +372,8 @@ void exec_bit(instruction ins){
   set_negative_flag(data);
 
   // set overflow flag
-  registers.p.v = (((data & bit6_mask) > 0) ? 1 : 0) & 1;
+  registers.p.f.v = (((data & bit6_mask) > 0) ? 1 : 0) & 1;
+
+  write_log();
 
 }
