@@ -43,34 +43,34 @@ reset:
 
 	ldx #0
 	lda #2
-	sta $a1, Y
-	lda #$a1
+	sta $41, Y
+	lda #$41
 	sta $fe
 	lda #1
-	sta $a3, Y
-	lda #$a3
+	sta $53, Y
+	lda #$53
 	sta $1b
 	lda #16
-	sta $a5, Y
-	lda #$a5
+	sta $65, Y
+	lda #$65
 	sta $cd
 
 	; and flags
 	lda #0
-	sta $a7, Y
-	lda #$a7
+	sta $77, Y
+	lda #$77
 	sta $fb
 	ldx #13
 	lda #-2
-	sta $a9, Y
-	lda #$a9
+	sta $89, Y
+	lda #$89
 	sta $1c
 
 	; ora flags
 	lda #0
 	ldx #16
-	sta $ab, Y
-	lda #$ab
+	sta $9b, Y
+	lda #$9b
 	sta $ce
 	lda #2
 	ldx #18
@@ -80,8 +80,8 @@ reset:
 
 	; eor flags
 	lda #13
-	sta $af, Y
-	lda #$af
+	sta $bf, Y
+	lda #$bf
 	sta $1d
 	lda #2
 	ldx #11
@@ -98,7 +98,7 @@ reset:
   lda #3
   and ($fb), Y  ; and zero flag #0
   lda #-1
-  ldx #13
+  ldx $13
   and ($1c), Y ; and negative flag #-2
 
   lda #0
