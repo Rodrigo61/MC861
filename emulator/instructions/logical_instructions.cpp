@@ -135,7 +135,17 @@ void exec_logical(instruction ins){
 
   set_zero_flag(registers.a);
   set_negative_flag(registers.a);
-  write_log();
+
+  switch(ins.opcode){
+    case AND_IMMEDIATE:
+    case EOR_IMMEDIATE:
+    case ORA_IMMEDIATE:
+      write_log();
+      break;
+    default:
+      write_log(address, data);
+      break;
+  }
 }
 
 void exec_shift(instruction ins){
