@@ -40,35 +40,27 @@ var3: .dsb 1
 reset:
 	ldx #$aa
 
-	; rol
 	lda #$8
 	rol
 
-	; rol carry flag
 	lda #$fa
 	rol
 
-	; rol zero flag
 	lda #$80
 	rol
 
-	; rol negative_flag
 	lda #$7a
 	rol
 
-	; ror
 	lda #$8
 	ror
 
-	; ror carry flag
 	lda #$3
 	ror
 
-	; ror zero flag
 	lda #$1
 	ror
 
-	; ror negative_flag
 	lda #$f0
 	ror
 

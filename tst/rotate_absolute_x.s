@@ -38,7 +38,7 @@ var3: .dsb 1
 ; RESET
 ;################################################################
 reset:
-	ldx $aa
+	ldx #$aa
 
 	lda #$8
 	sta $0ba1, X
@@ -57,29 +57,29 @@ reset:
 	lda #$f0
 	sta $0baf, X
 
-	; asl
-	asl $0ba1, X
+	; rol
+	rol $0ba1, X
 
-	; asl carry flag
-	asl $0ba3, X
+	; rol carry flag
+	rol $0ba3, X
 
-	; asl zero flag
-	asl $0ba5, X
+	; rol zero flag
+	rol $0ba5, X
 
-	; asl negative_flag
-	asl $0ba7, X
+	; rol negative_flag
+	rol $0ba7, X
 
-	; lsr
-	lsr $0ba9, X
+	; ror
+	ror $0ba9, X
 
-	; lsr carry flag
-	lsr $0bab, X
+	; ror carry flag
+	ror $0bab, X
 
-	; lsr zero flag
-	lsr $0bad, X
+	; ror zero flag
+	ror $0bad, X
 
-	; lsr negative_flag
-	lsr $0baf, X
+	; ror negative_flag
+	ror $0baf, X
 
 	brk
 
