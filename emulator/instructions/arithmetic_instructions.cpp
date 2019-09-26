@@ -1,9 +1,9 @@
 #include "instructions.hpp"
 
-void test_flags(uint8_t m, uint8_t n, uint8_t result)
+void test_flags_sum(uint8_t m, uint8_t n, uint8_t carry_in, uint8_t result)
 {
-    test_overflow(m, n, result);
-    test_carry(m, n);
+    test_overflow((int8_t)m, (int8_t)n, (int8_t)carry_in, (int8_t)result);
+    test_carry(m, n, carry_in);
     set_negative_flag(result);
     set_zero_flag(result);
 }
@@ -62,8 +62,9 @@ void exec_adc(instruction ins)
     default:
         break;
     }
-    registers.a = (uint8_t)(registers.a + data);
-    test_flags(data, acc, registers.a);
+
+    registers.a = (uint8_t)(registers.a + data + registers.p.f.c);
+    test_flags_sum(data, acc, registers.p.f.c, registers.a);
     write_log(address, data);
 }
 
@@ -71,8 +72,8 @@ void exec_adc_immediate(instruction ins)
 {
     uint8_t data = ins.argv[0];
     uint8_t acc = registers.a;
-    registers.a = (uint8_t)(registers.a + data);
-    test_flags(data, acc, registers.a);
+    registers.a = (uint8_t)(registers.a + data + registers.p.f.c);
+    test_flags_sum(data, acc, registers.p.f.c, registers.a);
     write_log();
 }
 
@@ -108,8 +109,8 @@ void exec_sbc(instruction ins)
         break;
     }
     data = (uint8_t)(256 - data);
-    registers.a = (uint8_t)(registers.a + data);
-    test_flags(data, acc, registers.a);
+    registers.a = (uint8_t)(registers.a + data + (registers.p.f.c ? 0 : 1));
+    test_flags_sum(data, acc, registers.p.f.c ? 0 : 1, registers.a);
     write_log(address, data);
 }
 
@@ -117,8 +118,8 @@ void exec_sbc_immediate(instruction ins)
 {
     uint8_t data = (uint8_t)(256 - ins.argv[0]);
     uint8_t acc = registers.a;
-    registers.a = (uint8_t)(registers.a - data);
-    test_flags(data, acc, registers.a);
+    registers.a = (uint8_t)(registers.a + data + (registers.p.f.c ? 0 : 1));
+    test_flags_sum(data, acc, registers.p.f.c ? 0 : 1, registers.a);
     write_log();
 }
 
