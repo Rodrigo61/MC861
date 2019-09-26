@@ -10,19 +10,18 @@ void test_flags(uint8_t m,uint8_t n,uint8_t result){
 }
 
 void cmp_family_test_and_set(uint8_t data,uint8_t acc){
+    uint8_t sub = (uint8_t)(acc-data);
     if(acc < data){
         set_carry_flag(0);
         set_zero_flag(0);
-        set_negative_flag(data);
     }else if(acc == data){
         set_carry_flag(1);
         set_zero_flag(1);
-        set_negative_flag(0);
     }else if(acc > data){
         set_carry_flag(1);
         set_zero_flag(0);
-        set_negative_flag(data);
     }
+    set_negative_flag(sub);
 }
 
 void exec_adc(instruction ins){	
@@ -291,6 +290,7 @@ void exec_inc(instruction ins){
     set_negative_flag(data);
     set_zero_flag(data);
     mcu.store_absolute(address,data);
+    write_log(address,data);
 }
 
 void exec_inx(instruction ins){

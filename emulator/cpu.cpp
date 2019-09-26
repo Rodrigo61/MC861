@@ -46,7 +46,7 @@ void set_overflow_flag(uint8_t value){
 }
 
 void test_overflow(uint8_t m, uint8_t n,uint8_t result){
-	registers.p.f.v = ((~(m^result))&(n^result)&(0x80)) & 1;
+	registers.p.f.v = 	((~(m^result))&(n^result)&(0x80)) & 1;
 }
 
 void set_decimal_flag(uint8_t value){
