@@ -3,6 +3,26 @@
 void build_instruction_set()
 {
 	instruction_set[BRK] = {exec_brk, 1, 7};
+	
+	instruction_set[NOP] = {exec_nop, 1, 2};
+
+	instruction_set[SEI] = {change_I_flag, 1, 2};
+	instruction_set[CLI] = {change_I_flag, 1, 2};
+
+	instruction_set[JMP_ABSOLUTE] = {exec_jmp, 3, 3};
+	instruction_set[JMP_INDIRECT] = {exec_jmp, 3, 5};
+
+	instruction_set[JSR] = {exec_jsr, 3, 6};
+	instruction_set[RTS] = {exec_rts, 1, 6};
+
+	instruction_set[BCC] = {exec_branch, 2, 2}; 
+	instruction_set[BCS] = {exec_branch, 2, 2}; 
+	instruction_set[BNE] = {exec_branch, 2, 2}; 
+	instruction_set[BEQ] = {exec_branch, 2, 2}; 
+	instruction_set[BPL] = {exec_branch, 2, 2}; 
+	instruction_set[BMI] = {exec_branch, 2, 2}; 
+	instruction_set[BVC] = {exec_branch, 2, 2}; 
+	instruction_set[BVS] = {exec_branch, 2, 2}; 
 
 	instruction_set[LDA_IMMEDIATE] = {exec_ld_immediate, 2, 2};
 	instruction_set[LDA_ZERO_PAGE] = {exec_ld, 2, 3};
