@@ -6,6 +6,12 @@ using namespace std;
 // Forms a 16-bit word (aka. double word or dword) from two bytes.
 uint16_t build_dword(uint8_t high_byte, uint8_t low_byte);
 
+// Get low byte (uint8_t) of the uint16_t data
+uint8_t get_low(uint16_t data);
+
+// Get high byte (uint8_t) of the uint16_t data
+uint8_t get_high(uint16_t data);
+
 // Print log information given all registers.
 void print(uint8_t a, uint8_t x, uint8_t y, uint16_t sp, uint16_t pc, uint8_t p);
 
