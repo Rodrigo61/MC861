@@ -74,8 +74,8 @@ void build_instruction_set()
 
 	instruction_set[CMP_IMMEDIATE] = {exec_cmp_immediate, 2, 2};
 	instruction_set[CMP_ZEROPAGE] = {exec_cmp, 2, 3};  
-	instruction_set[CMP_ZEROPAGE_X] = {exec_cmp, 2, 3};
-	instruction_set[CMP_ABSOLUTE] = {exec_cmp, 2, 4};
+	instruction_set[CMP_ZEROPAGE_X] = {exec_cmp, 2, 4};
+	instruction_set[CMP_ABSOLUTE] = {exec_cmp, 3, 4};
 	instruction_set[CMP_ABSOLUTE_X] = {exec_cmp, 3, 4};
 	instruction_set[CMP_ABSOLUTE_Y] = {exec_cmp, 3, 4};
 	instruction_set[CMP_INDIRECT_X] = {exec_cmp, 2, 6};

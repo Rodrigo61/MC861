@@ -15,17 +15,17 @@ void cmp_family_test_and_set(uint8_t data, uint8_t acc)
     if (acc < data)
     {
         set_carry_flag(0);
-        set_zero_flag(0);
+        registers.p.f.z = 0;
     }
     else if (acc == data)
     {
         set_carry_flag(1);
-        set_zero_flag(1);
+        registers.p.f.z = 0;
     }
     else if (acc > data)
     {
         set_carry_flag(1);
-        set_zero_flag(0);
+        registers.p.f.z = 1;
     }
 
     set_negative_flag(sub);
@@ -195,7 +195,7 @@ void exec_cpx(instruction ins)
     switch (ins.opcode)
     {
     case CPX_ABSOLUTE:
-        tie(address, data) = mcu.load_absolute(ins.argv[0]);
+        tie(address, data) = mcu.load_absolute(build_dword(ins.argv[1], ins.argv[0]));
         break;
     case CPX_ZEROPAGE:
         tie(address, data) = mcu.load_zero_page(ins.argv[0]);
@@ -222,10 +222,10 @@ void exec_cpy(instruction ins)
     uint8_t acc = registers.y;
     switch (ins.opcode)
     {
-    case CPX_ABSOLUTE:
-        tie(address, data) = mcu.load_absolute(ins.argv[0]);
+    case CPY_ABSOLUTE:
+        tie(address, data) = mcu.load_absolute(build_dword(ins.argv[1], ins.argv[0]));
         break;
-    case CPX_ZEROPAGE:
+    case CPY_ZEROPAGE:
         tie(address, data) = mcu.load_zero_page(ins.argv[0]);
         break;
     default:
