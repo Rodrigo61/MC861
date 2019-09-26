@@ -203,6 +203,8 @@ void exec_jsr(instruction ins);
 
 void exec_rts(instruction ins);
 
+void exec_rti(instruction ins);
+
 void exec_branch(instruction ins);
 
 void exec_ld(instruction ins);

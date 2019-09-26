@@ -14,6 +14,7 @@ void build_instruction_set()
 
 	instruction_set[JSR] = {exec_jsr, 3, 6};
 	instruction_set[RTS] = {exec_rts, 1, 6};
+	instruction_set[RTI] = {exec_rti, 1, 6};
 
 	instruction_set[BCC] = {exec_branch, 2, 2}; 
 	instruction_set[BCS] = {exec_branch, 2, 2}; 

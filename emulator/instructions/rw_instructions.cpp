@@ -208,6 +208,7 @@ void exec_ph(instruction ins)
 		break;
 	case PHP:
 		data = registers.p.v;
+		data |= 0b00010000;	//	PHP sets B flag
 		break;
 	
 	default:
@@ -247,6 +248,12 @@ void exec_pl(instruction ins)
 	{
 		set_zero_flag(data);
 		set_negative_flag(data);
+	}
+	else
+	{
+		// flags B and R flags never change in register
+		registers.p.f.b = 0;
+		registers.p.f.r = 1;
 	}
 
 	write_log(address, data);
