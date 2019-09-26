@@ -101,6 +101,7 @@
 #define INX 0xE8
 #define DEY 0x88
 #define INY 0xC8
+
 // Logical instructions
 #define AND_IMMEDIATE 0x29
 #define AND_ZERO_PAGE 0x25

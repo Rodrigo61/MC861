@@ -46,35 +46,36 @@ var2: .dsb 1
 ;################################################################
 reset:
     ; Setup the values to be tested
-    lda #1 
+    lda #-2 
     ldx #1
-    ldy #1
     sta var1
     sta var2
     sta var1, x
-    sta var2, x    
+    sta var2, x  
+    ldx #-2
+    ldy #-2  
 
-    ; Decrement once, check for 0 flag
-    dex
-    dey
-    ; Decrement again, check for negative flag
-    dex
-    dey
+    ; Decrement once, check for negative flag
+    inx
+    iny
+    ; Decrement again, check for 0
+    inx
+    iny
 
-    ; Decrement once, check for 0 flag
-    dec var1
-    dec var2
-    ; Decrement again, check for negative flag
-    dec var1
-    dec var2
+    ; Decrement once, check for negative flag
+    inc var1
+    inc var2
+    ; Decrement again, check for 0 flag
+    inc var1
+    inc var2
 
     ldx #1
-    ; Decrement once, check for 0 flag
-    dec var1, x
-    dec var2, x
-    ; Decrement again, check for negative flag
-    dec var1, x
-    dec var2, x
+    ; Decrement once, check for negative flag
+    inc var1, x
+    inc var2, x
+    ; Decrement again, check for 0
+    inc var1, x
+    inc var2, x
 
 ;################################################################
 ; interrupt vectors

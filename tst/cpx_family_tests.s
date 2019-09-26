@@ -25,6 +25,10 @@ var1: .dsb 1
 var2: .dsb 1
 	.ende
 
+	.enum $fefe
+debug: .dsb 1
+	.ende
+
 ;################################################################
 ; iNES header
 ;################################################################
@@ -45,37 +49,32 @@ var2: .dsb 1
 ; RESET
 ;################################################################
 reset:
-    ; Setup the values to be tested
+    ; Setup the values to be tested for cpx
     lda #1 
     ldx #1
-    ldy #1
     sta var1
     sta var2
-    sta var1, x
-    sta var2, x    
 
-    ; Decrement once, check for 0 flag
-    dex
-    dey
-    ; Decrement again, check for negative flag
-    dex
-    dey
+    ; Immediate CPX
+    cpx #1
+    cpx #0
+    cpx #2
 
-    ; Decrement once, check for 0 flag
-    dec var1
-    dec var2
-    ; Decrement again, check for negative flag
-    dec var1
-    dec var2
-
+    ; Absolute Zeropage CPX
     ldx #1
-    ; Decrement once, check for 0 flag
-    dec var1, x
-    dec var2, x
-    ; Decrement again, check for negative flag
-    dec var1, x
-    dec var2, x
+    cpx var1
+    ldx #0
+    cpx var1
+    ldx #2
+    cpx var1
 
+    ; Absolute CPX
+    ldx #1
+    cpx var2
+    ldx #0
+    cpx var2
+    ldx #2
+    cpx var2
 ;################################################################
 ; interrupt vectors
 ;################################################################

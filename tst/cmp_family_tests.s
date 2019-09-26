@@ -25,6 +25,10 @@ var1: .dsb 1
 var2: .dsb 1
 	.ende
 
+	.enum $fefe
+debug: .dsb 1
+	.ende
+
 ;################################################################
 ; iNES header
 ;################################################################
@@ -45,7 +49,7 @@ var2: .dsb 1
 ; RESET
 ;################################################################
 reset:
-    ; Setup the values to be tested
+    ; Setup the values to be tested for cmp
     lda #1 
     ldx #1
     ldy #1
@@ -53,28 +57,65 @@ reset:
     sta var2
     sta var1, x
     sta var2, x    
+    sta (var1, x)
+    sta (var1),y
+   
+    ; Immediate CMP
+    ; Flags NZC should be 001, 011, 100
+    lda #1
+    cmp #1
+    cmp #0
+    cmp #2
 
-    ; Decrement once, check for 0 flag
-    dex
-    dey
-    ; Decrement again, check for negative flag
-    dex
-    dey
+    ; Absolute Zeropage CMP
+    lda #1
+    cmp var1
+    lda #0
+    cmp var1 
+    lda #2
+    cmp var1
 
-    ; Decrement once, check for 0 flag
-    dec var1
-    dec var2
-    ; Decrement again, check for negative flag
-    dec var1
-    dec var2
+    ; Absolute CMP
+    lda #1
+    cmp var2
+    lda #0
+    cmp var2 
+    lda #2
+    cmp var2
 
-    ldx #1
-    ; Decrement once, check for 0 flag
-    dec var1, x
-    dec var2, x
-    ; Decrement again, check for negative flag
-    dec var1, x
-    dec var2, x
+    ; Zeropage + X CMP
+    lda #1
+    cmp var1, x
+    lda #0
+    cmp var1, x
+    lda #2
+    cmp var1, x
+    lda #179
+    sta debug
+
+    ; Address + X CMP
+    lda #1
+    cmp var2, x
+    lda #0
+    cmp var2, x 
+    lda #2
+    cmp var2, x
+
+    ; Indirect X CMP
+    lda #1
+    cmp (var1, x)
+    lda #0
+    cmp (var1, x)
+    lda #2
+    cmp (var1, x)
+
+    ; Indirect Y CMP
+    lda #1
+    cmp (var1), y
+    lda #0
+    cmp (var1), y
+    lda #2
+    cmp (var1), y
 
 ;################################################################
 ; interrupt vectors

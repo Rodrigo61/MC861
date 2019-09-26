@@ -25,6 +25,10 @@ var1: .dsb 1
 var2: .dsb 1
 	.ende
 
+	.enum $fefe
+debug: .dsb 1
+	.ende
+
 ;################################################################
 ; iNES header
 ;################################################################
@@ -45,37 +49,32 @@ var2: .dsb 1
 ; RESET
 ;################################################################
 reset:
-    ; Setup the values to be tested
+    ; Setup the values to be tested for cpy
     lda #1 
-    ldx #1
     ldy #1
     sta var1
     sta var2
-    sta var1, x
-    sta var2, x    
 
-    ; Decrement once, check for 0 flag
-    dex
-    dey
-    ; Decrement again, check for negative flag
-    dex
-    dey
+    ; Immediate CPY
+    cpy #1
+    cpy #0
+    cpy #2
 
-    ; Decrement once, check for 0 flag
-    dec var1
-    dec var2
-    ; Decrement again, check for negative flag
-    dec var1
-    dec var2
+    ; Absolute Zeropage CPY
+    ldy #1
+    cpy var1
+    ldy #0
+    cpy var1
+    ldy #2
+    cpy var1
 
-    ldx #1
-    ; Decrement once, check for 0 flag
-    dec var1, x
-    dec var2, x
-    ; Decrement again, check for negative flag
-    dec var1, x
-    dec var2, x
-
+    ; Absolute CPY
+    ldy #1
+    cpy var2
+    ldy #0
+    cpy var2
+    ldy #2
+    cpy var2
 ;################################################################
 ; interrupt vectors
 ;################################################################
