@@ -75,14 +75,13 @@ instruction decode_next_instruction();
 // Sets or resets zero flag based on the given data.
 void set_zero_flag(uint8_t data);
 
-
 // Sets or resets carry flag based on the given data.
 void set_carry_flag(uint8_t data);
-void test_carry(uint8_t a, uint8_t b);
+void test_carry(uint8_t a, uint8_t b, uint8_t carry_in);
 
 // Sets or resets overflow flag based on the given data.
 void set_overflow_flag(uint8_t data);
-void test_overflow(uint8_t m, uint8_t n,uint8_t result);
+void test_overflow(int8_t m, int8_t n, int8_t carry_in, int8_t result);
 
 // Sets or resets decimal flag based on the given data.
 void set_decimal_flag(uint8_t data);
