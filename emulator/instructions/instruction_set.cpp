@@ -67,6 +67,60 @@ void build_instruction_set()
 	instruction_set[PLA] = {exec_pl, 1, 4};
 	instruction_set[PLP] = {exec_pl, 1, 4};
 
+	instruction_set[INC_ZEROPAGE] = {exec_inc,  2, 5};
+	instruction_set[INC_ZEROPAGE_X] = {exec_inc, 2, 6};
+	instruction_set[INC_ABSOLUTE] = {exec_inc, 3, 6};
+	instruction_set[INC_ABSOLUTE_X] = {exec_inc, 3, 7};
+
+	instruction_set[CMP_IMMEDIATE] = {exec_cmp_immediate, 2, 2};
+	instruction_set[CMP_ZEROPAGE] = {exec_cmp, 2, 3};  
+	instruction_set[CMP_ZEROPAGE_X] = {exec_cmp, 2, 4};
+	instruction_set[CMP_ABSOLUTE] = {exec_cmp, 3, 4};
+	instruction_set[CMP_ABSOLUTE_X] = {exec_cmp, 3, 4};
+	instruction_set[CMP_ABSOLUTE_Y] = {exec_cmp, 3, 4};
+	instruction_set[CMP_INDIRECT_X] = {exec_cmp, 2, 6};
+	instruction_set[CMP_INDIRECT_Y] = {exec_cmp, 2, 5};
+
+	instruction_set[CPX_IMMEDIATE] = {exec_cpx_immediate, 2, 2};
+	instruction_set[CPX_ZEROPAGE] = {exec_cpx, 2, 3};
+	instruction_set[CPX_ABSOLUTE] = {exec_cpx, 3, 4};
+
+	instruction_set[CPY_IMMEDIATE] = {exec_cpy_immediate, 2, 2};
+	instruction_set[CPY_ZEROPAGE] = {exec_cpy, 2, 3};
+	instruction_set[CPY_ABSOLUTE] = {exec_cpy, 3, 4};
+
+	instruction_set[DEC_ZEROPAGE] = {exec_dec, 2, 5};
+	instruction_set[DEC_ZEROPAGE_X] = {exec_dec, 2, 6};
+	instruction_set[DEC_ABSOLUTE] = {exec_dec, 3, 6};
+	instruction_set[DEC_ABSOLUTE_X] = {exec_dec, 3, 7};
+
+	instruction_set[ADC_IMMEDIATE] = {exec_adc_immediate, 2, 2};
+	instruction_set[ADC_ZEROPAGE] = {exec_adc, 2, 3};  
+	instruction_set[ADC_ZEROPAGE_X] = {exec_adc, 2, 4};
+	instruction_set[ADC_ABSOLUTE] = {exec_adc, 3, 4};
+	instruction_set[ADC_ABSOLUTE_X] = {exec_adc, 3, 4};
+	instruction_set[ADC_ABSOLUTE_Y] = {exec_adc, 3, 4};
+	instruction_set[ADC_INDIRECT_X] = {exec_adc, 2, 6};
+	instruction_set[ADC_INDIRECT_Y] = {exec_adc, 2, 5};
+
+	instruction_set[SBC_IMMEDIATE] = {exec_sbc_immediate, 2, 2};
+	instruction_set[SBC_ZEROPAGE] = {exec_sbc, 2, 3};  
+	instruction_set[SBC_ZEROPAGE_X] = {exec_sbc, 2, 4};
+	instruction_set[SBC_ABSOLUTE] = {exec_sbc, 3, 4};
+	instruction_set[SBC_ABSOLUTE_X] = {exec_sbc, 3, 4};
+	instruction_set[SBC_ABSOLUTE_Y] = {exec_sbc, 3, 4};
+	instruction_set[SBC_INDIRECT_X] = {exec_sbc, 2, 6};
+	instruction_set[SBC_INDIRECT_Y] = {exec_sbc, 2, 5}; 
+
+	instruction_set[CLC] = {exec_clc, 1, 2};
+	instruction_set[SEC] = {exec_sec, 1, 2};
+	instruction_set[CLV] = {exec_clv, 1, 2};
+	instruction_set[SED] = {exec_sed, 1, 2};
+	instruction_set[CLD] = {exec_cld, 1, 2};
+	instruction_set[DEX] = {exec_dex, 1, 2};
+	instruction_set[INX] = {exec_inx, 1, 2};
+	instruction_set[DEY] = {exec_dey, 1, 2};
+	instruction_set[INY] = {exec_iny, 1, 2};
 	instruction_set[TAX] = {exec_transfer, 1, 2};
 	instruction_set[TXA] = {exec_transfer, 1, 2};
 	instruction_set[TAY] = {exec_transfer, 1, 2};

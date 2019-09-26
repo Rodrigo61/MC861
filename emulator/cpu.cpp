@@ -26,10 +26,38 @@ instruction decode_next_instruction()
 	return ins;
 }
 
-void set_zero_flag(uint8_t data)
+void set_zero_flag(uint8_t value)
 {
 	// Explicitly acknowledge you do not need the excess bits to solve warning.
-	registers.p.f.z = ((data == 0) ? 1 : 0) & 1;
+	registers.p.f.z = ((value == 0) ? 1 : 0) & 1;
+}
+
+// TODO: change this name.
+void set_carry_flag(uint8_t value)
+{
+	registers.p.f.c = ((value != 0) ? 1 : 0) & 1;
+}
+
+void test_carry(uint8_t a, uint8_t b, uint8_t carry_in)
+{
+	uint16_t r = (uint16_t)((uint16_t)a + (uint16_t)b + (uint16_t)carry_in);
+	registers.p.f.c = ((r > 255) ? 1 : 0) & 1;
+}
+
+void set_overflow_flag(uint8_t value)
+{
+	registers.p.f.v = ((value != 0) ? 1 : 0) & 1;
+}
+
+void test_overflow(int8_t m, int8_t n, int8_t carry_in, int8_t result)
+{
+	int r = (int)m + (int)n + (int)carry_in;
+	registers.p.f.v = ((r == (int)result) ? 0 : 1) & 1;
+}
+
+void set_decimal_flag(uint8_t value)
+{
+	registers.p.f.d = (((value != 0)) ? 1 : 0) & 1;
 }
 
 void set_negative_flag(uint8_t data)
