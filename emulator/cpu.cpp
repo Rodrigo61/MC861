@@ -32,6 +32,7 @@ void set_zero_flag(uint8_t value)
 	registers.p.f.z = ((value == 0) ? 1 : 0) & 1;
 }
 
+// TODO: change this name.
 void set_carry_flag(uint8_t value)
 {
 	registers.p.f.c = ((value != 0) ? 1 : 0) & 1;
