@@ -397,6 +397,6 @@ void exec_bit(instruction ins){
   // set overflow flag
   registers.p.f.v = (((data & bit6_mask) > 0) ? 1 : 0) & 1;
 
-  write_log();
+  write_log(address, data);
 
 }
