@@ -54,7 +54,7 @@ void exec_adc(instruction ins){
         default:
             break;
     }
-    registers.a += data;
+    registers.a =(uint8_t) (registers.a + data);
     test_flags(data,acc,registers.a);
 	write_log(address,data);
 }
@@ -62,7 +62,7 @@ void exec_adc(instruction ins){
 void exec_adc_immediate(instruction ins){
     uint8_t data = ins.argv[0];
 	uint8_t acc = registers.a;
-    registers.a += data;
+    registers.a = (uint8_t) (registers.a - data);
     test_flags(data,acc,registers.a);
     write_log();
 }
@@ -97,15 +97,16 @@ void exec_sbc(instruction ins){
         default:
             break;
     }
-    registers.a -= data;
+    data = (uint8_t) ~data;
+    registers.a = (uint8_t)(registers.a + data);
     test_flags(data,acc,registers.a);
     write_log(address,data);
 }
 
 void exec_sbc_immediate(instruction ins){
-    uint8_t data = ins.argv[0];
+    uint8_t data = (uint8_t) ~(ins.argv[0]);
 	uint8_t acc = registers.a;
-    registers.a -= data;
+    registers.a = (uint8_t)(registers.a + data);
     test_flags(data,acc,registers.a);
     write_log();
 }
