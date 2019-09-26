@@ -49,6 +49,7 @@ void exec_logical(instruction ins){
   uint16_t address;
   uint8_t data;
 
+  // read data and address
   switch(ins.opcode){
     case AND_IMMEDIATE:
     case EOR_IMMEDIATE:
@@ -99,6 +100,7 @@ void exec_logical(instruction ins){
       break;
   }
 
+  // operation
   switch (ins.opcode) {
     case AND_IMMEDIATE:
     case AND_ZERO_PAGE:
@@ -136,6 +138,7 @@ void exec_logical(instruction ins){
   set_zero_flag(registers.a);
   set_negative_flag(registers.a);
 
+  // write log
   switch(ins.opcode){
     case AND_IMMEDIATE:
     case EOR_IMMEDIATE:
@@ -153,6 +156,7 @@ void exec_shift(instruction ins){
   uint8_t data;
   uint8_t s_result;
 
+  // read data
   switch(ins.opcode){
     case ASL_ACCUMULATOR:
     case LSR_ACCUMULATOR:
@@ -180,6 +184,7 @@ void exec_shift(instruction ins){
       break;
   }
 
+  // execute operation
   switch (ins.opcode) {
     case ASL_ACCUMULATOR:
     case ASL_ZERO_PAGE:
@@ -203,6 +208,7 @@ void exec_shift(instruction ins){
 
   }
 
+  // store result
   switch (ins.opcode) {
     case ASL_ACCUMULATOR:
     case LSR_ACCUMULATOR:
@@ -234,6 +240,7 @@ void exec_shift(instruction ins){
   set_zero_flag(s_result);
   set_negative_flag(s_result);
 
+  // write log
   switch (ins.opcode) {
     case ASL_ACCUMULATOR:
     case LSR_ACCUMULATOR:
@@ -251,6 +258,7 @@ void exec_rotate(instruction ins){
   uint8_t s_result;
   uint8_t tmp_carry;
 
+  // read data
   switch(ins.opcode){
     case ROL_ACCUMULATOR:
     case ROR_ACCUMULATOR:
@@ -278,6 +286,7 @@ void exec_rotate(instruction ins){
       break;
   }
 
+  // execute operation
   switch (ins.opcode) {
     case ROL_ACCUMULATOR:
     case ROL_ZERO_PAGE:
@@ -319,6 +328,7 @@ void exec_rotate(instruction ins){
 
   }
 
+  // store result
   switch (ins.opcode) {
     case ROL_ACCUMULATOR:
     case ROR_ACCUMULATOR:
@@ -350,6 +360,7 @@ void exec_rotate(instruction ins){
   set_zero_flag(s_result);
   set_negative_flag(s_result);
 
+  // write log
   switch (ins.opcode) {
     case ROL_ACCUMULATOR:
     case ROR_ACCUMULATOR:
@@ -367,6 +378,7 @@ void exec_bit(instruction ins){
   uint8_t result;
   uint8_t bit6_mask = (1 << 6);
 
+  // read data
   switch (ins.opcode) {
     case BIT_ZERO_PAGE:
       tie(address, data) = mcu.load_zero_page(ins.argv[0]);
@@ -376,6 +388,7 @@ void exec_bit(instruction ins){
       break;
   }
 
+  // execute operation
   result = registers.a & data;
 
   set_zero_flag(result);
