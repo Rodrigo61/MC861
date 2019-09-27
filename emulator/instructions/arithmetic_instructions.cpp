@@ -108,18 +108,18 @@ void exec_sbc(instruction ins)
     default:
         break;
     }
-    data = (uint8_t)(256 - data);
-    registers.a = (uint8_t)(registers.a + data + (registers.p.f.c ? 0 : 1));
-    test_flags_sum(data, acc, registers.p.f.c ? 0 : 1, registers.a);
+    data = (uint8_t)(0xff ^ ins.argv[0]);
+    registers.a = (uint8_t)(registers.a + data + registers.p.f.c);
+    test_flags_sum(data, acc, registers.p.f.c, registers.a);
     write_log(address, data);
 }
 
 void exec_sbc_immediate(instruction ins)
 {
-    uint8_t data = (uint8_t)(256 - ins.argv[0]);
+    uint8_t data = (uint8_t)(0xff ^ ins.argv[0]);
     uint8_t acc = registers.a;
-    registers.a = (uint8_t)(registers.a + data + (registers.p.f.c ? 0 : 1));
-    test_flags_sum(data, acc, registers.p.f.c ? 0 : 1, registers.a);
+    registers.a = (uint8_t)(registers.a + data + registers.p.f.c);
+    test_flags_sum(data, acc, registers.p.f.c, registers.a);
     write_log();
 }
 
