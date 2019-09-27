@@ -8,7 +8,7 @@ const uint8_t bit7_mask = (1 << 7);
 
 #define RESET_ADDRESS_LOW 0xfffc
 #define RESET_ADDRESS_HIGH 0xfffd
-#define NESTEST_DEBUG 1
+#define NESTEST_DEBUG 0
 
 // Represents status register as a sequence of one bit integers. Names given as in 6502 manual.
 struct flags_t

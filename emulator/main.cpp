@@ -33,7 +33,7 @@ int main(int argc, const char *argv[])
 	
 		if (NESTEST_DEBUG)
 		{
-			cout << uppercase << hex <<  setfill('0') << setw(2) << (int)registers.pc << " ";
+			cout << uppercase << hex <<  setfill('0') << setw(4) << (int)registers.pc << " ";
 			cout << " " << uppercase << hex << setfill('0') << setw(2) << (int)ins.opcode;
 			for (int i = 0; i < 2; i++)
 			{
