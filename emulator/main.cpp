@@ -14,13 +14,12 @@ int main(int argc, const char *argv[])
 	mcu.load_nes_rom(argv[1]);
 
 	// Initial state
-	registers.p.v = 0x34;
+	registers.p.v = 0x24;
 	registers.sp = 0xFD;
 	registers.pc = build_dword(mcu.load_absolute(RESET_ADDRESS_HIGH).second, mcu.load_absolute(RESET_ADDRESS_LOW).second);
 
 	// nestest
 	//registers.pc = 0xc000;
-	//registers.p.v = 0x24;
 
 	long long cycle_count = 0;
 
