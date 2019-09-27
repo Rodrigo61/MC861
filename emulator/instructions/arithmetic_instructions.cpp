@@ -108,7 +108,7 @@ void exec_sbc(instruction ins)
     default:
         break;
     }
-    data = (uint8_t)(0xff ^ ins.argv[0]);
+    data = (uint8_t)(0xff ^ data);
     registers.a = (uint8_t)(registers.a + data + registers.p.f.c);
     test_flags_sum(data, acc, registers.p.f.c, registers.a);
     write_log(address, data);
