@@ -19,8 +19,12 @@ int main(int argc, const char *argv[])
 	registers.pc = build_dword(mcu.load_absolute(RESET_ADDRESS_HIGH).second, mcu.load_absolute(RESET_ADDRESS_LOW).second);
 
 	// nestest
-	//registers.pc = 0xc000;
-	//registers.p.v = 0x24;
+	if (NESTEST_DEBUG)
+	{
+		registers.pc = 0xc000;
+		registers.p.v = 0x24;
+	}
+	
 
 	long long cycle_count = 0;
 
@@ -28,9 +32,25 @@ int main(int argc, const char *argv[])
 	{
 		instruction ins = decode_next_instruction();
 	
-		// nestest
-		// cout << "code = " << hex << (int)ins.opcode << " ";
-		// cout << flush;
+		if (NESTEST_DEBUG)
+		{
+			cout << uppercase << hex <<  setfill('0') << setw(2) << (int)registers.pc << " ";
+			cout << " " << uppercase << hex << setfill('0') << setw(2) << (int)ins.opcode;
+			for (int i = 0; i < 2; i++)
+			{
+				if (i < instruction_set[ins.opcode].num_bytes - 1)
+					cout << " " << uppercase << hex << setfill('0') << setw(2) << (int)ins.argv[i];
+				else
+					cout << "   ";
+			}
+			
+			cout << " A:" << uppercase << hex << setfill('0') << setw(2) << (int)registers.a;
+			cout << " X:" << uppercase << hex << setfill('0') << setw(2) << (int)registers.x;
+			cout << " Y:" << uppercase << hex << setfill('0') << setw(2) << (int)registers.y;
+			cout << " P:" << uppercase << hex << setfill('0') << setw(2) << (int)registers.p.v;
+			cout << " SP:" << uppercase << hex << setw(2) << (int)get_low(registers.sp);
+			cout << endl;
+		}
 
 		registers.pc = (uint16_t)(registers.pc + instruction_set[ins.opcode].num_bytes);
 		
@@ -38,13 +58,10 @@ int main(int argc, const char *argv[])
 
 		cycle_count += instruction_set[ins.opcode].num_cycles;
 
-		// nestest
-		// if (registers.pc == 0xc6bd)
-		// {
-		// 	cout << hex << (int)mcu.load_absolute(build_dword(0x00, 0x02)).second << endl;
-		// 	cout << hex << (int)mcu.load_absolute(build_dword(0x00, 0x03)).second << endl;
-		// 	exit(0);
-		// }
+		if (NESTEST_DEBUG && registers.pc == 0xc6bd)
+		{
+			exit(0);
+		}
 	
 	}
 }
