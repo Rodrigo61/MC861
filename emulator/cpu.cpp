@@ -8,12 +8,14 @@ memory_control_unit mcu;
 
 void write_log()
 {
-	print(registers.a, registers.x, registers.y, build_dword(0x01, registers.sp), registers.pc, registers.p.v);
+	if (!NESTEST_DEBUG)
+		print(registers.a, registers.x, registers.y, build_dword(0x01, registers.sp), registers.pc, registers.p.v);
 }
 
 void write_log(uint16_t addr, uint8_t data)
 {
-	printls(registers.a, registers.x, registers.y, build_dword(0x01, registers.sp), registers.pc, registers.p.v, addr, data);
+	if (!NESTEST_DEBUG)
+		printls(registers.a, registers.x, registers.y, build_dword(0x01, registers.sp), registers.pc, registers.p.v, addr, data);
 }
 
 instruction decode_next_instruction()
