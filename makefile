@@ -1,5 +1,5 @@
 CC=g++
-CCFLAGS=-std=c++14 -g -Wall -Wextra -Wno-unused-result -Wconversion -Wfatal-errors -Wsign-conversion -fsanitize=undefined,address
+CCFLAGS=-std=c++14 -g -Wall -Wextra -Wno-unused-result -Wconversion -Wfatal-errors -Wsign-conversion 
 
 TST=./tst
 RES=./res
