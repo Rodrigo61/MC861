@@ -20,12 +20,12 @@ void cmp_family_test_and_set(uint8_t data, uint8_t acc)
     else if (acc == data)
     {
         set_carry_flag(1);
-        registers.p.f.z = 0;
+        registers.p.f.z = 1;
     }
     else if (acc > data)
     {
         set_carry_flag(1);
-        registers.p.f.z = 1;
+        registers.p.f.z = 0;
     }
 
     set_negative_flag(sub);
