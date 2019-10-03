@@ -26,11 +26,11 @@ MIRRORING = %0001 ;%0000 = horizontal, %0001 = vertical, %1000 = four-screen
 ;################################################################
 
 function:
-    nop
-    nop
-    nop
-    nop
-    nop
+    lda #2
+	lda #3
+	lda #4
+	lda #5
+	lda #6
     rts
 
 

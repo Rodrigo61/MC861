@@ -25,16 +25,17 @@ MIRRORING = %0001 ;%0000 = horizontal, %0001 = vertical, %1000 = four-screen
 ; RESET
 ;################################################################
 label2:
-    nop
+    lda #1
 	brk
 
 reset:
     bcc label2
-	nop
-	nop
-	nop
-	nop
-	nop
+	lda #2
+	lda #3
+	lda #4
+	lda #5
+	lda #6
+	brk
 
 ;################################################################
 ; interrupt vectors

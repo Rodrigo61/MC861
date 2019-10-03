@@ -40,11 +40,12 @@ label1:
     plp
 
     bcc label2
-	nop
-	nop
-	nop
-	nop
-	nop
+	lda #2
+	lda #3
+	lda #4
+	lda #5
+	lda #6
+	brk
 
 label2:
 	brk
