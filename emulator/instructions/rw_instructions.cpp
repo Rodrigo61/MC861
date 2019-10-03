@@ -224,36 +224,21 @@ void exec_ph(instruction ins)
 void exec_pl(instruction ins)
 {
 	uint16_t address;
-	uint8_t *dest;
 	uint8_t data;
-
-	switch (ins.opcode)
-	{
-	case PLA:
-		dest = &registers.a;
-		break;
-	case PLP:
-		dest = &registers.p.v;
-		break;
-	
-	default:
-		assert(false);
-	}
 
 	registers.sp++;
 	tie(address, data) = mcu.load_absolute(build_dword(0x01, registers.sp));
-	*dest = data;
 
 	if (ins.opcode == PLA)
 	{
+		registers.a = data;
 		set_zero_flag(data);
 		set_negative_flag(data);
 	}
 	else
 	{
-		// flags B and R flags never change in register
-		registers.p.f.b = 0;
-		registers.p.f.r = 1;
+		// flags B and R never change in register (4 and 5).
+		registers.p.v = (registers.p.v & 0b00110000) ^ (data & 0b11001111);
 	}
 
 	write_log(address, data);
