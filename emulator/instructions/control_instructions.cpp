@@ -6,6 +6,7 @@ void pull_p_from_stack()
 {
 	registers.sp++;
 	registers.p.v = mcu.load_absolute(build_dword(0x01, registers.sp)).second;
+	// flags B and R flags never change in register
 	registers.p.f.b = 0;
 	registers.p.f.r = 1;
 }

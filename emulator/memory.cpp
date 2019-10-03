@@ -54,7 +54,8 @@ pair<uint16_t, uint8_t> memory_control_unit::load_absolute(uint16_t address)
 	else
 	{
 		// Mirror RAM in remaining address space. TODO: write test?
-		return {address, ram[address % RAM_SIZE]};
+		address = address % RAM_SIZE;
+		return {address, ram[address]};
 	}
 }
 
@@ -108,7 +109,8 @@ uint16_t memory_control_unit::store_absolute(uint16_t address, uint8_t data)
 	else
 	{
 		// Mirror RAM in remaining address space. TODO: write test?
-		ram[address % RAM_SIZE] = data;
+		address = address % RAM_SIZE;
+		ram[address] = data;
 	}
 
 	return address;
