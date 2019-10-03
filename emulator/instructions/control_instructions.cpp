@@ -5,9 +5,10 @@
 void pull_p_from_stack()
 {
 	registers.sp++;
-	registers.p.v = mcu.load_absolute(build_dword(0x01, registers.sp)).second;
-	registers.p.f.b = 0;
-	registers.p.f.r = 1;
+	uint8_t data = mcu.load_absolute(build_dword(0x01, registers.sp)).second;
+
+	// flags B and R never change in register (4 and 5).
+	registers.p.v = (registers.p.v & 0b00110000) ^ (data & 0b11001111);
 }
 
 void pull_pc_from_stack()
