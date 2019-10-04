@@ -10,6 +10,12 @@ using namespace std;
 #define ROM_SIZE 0x8000
 #define ROM_BASE 0x8000
 
+#define PPU_SIZE 0x08
+#define PPU_BASE 0x2000
+
+#define APU_SIZE 0x20
+#define APU_BASE 0x4000
+
 // Size of character memory. TODO: set this dynamically based on header.
 #define CHR_SIZE 0x2000
 
@@ -24,6 +30,12 @@ private:
 
 	// rom byte array.
 	uint8_t rom[ROM_SIZE];
+
+	// PPU memory mapped registers.
+	uint8_t ppu_registers[PPU_SIZE];
+
+	// APU memory mapped registers.
+	uint8_t apu_registers[APU_SIZE];
 
 public:
 	memory_control_unit();
