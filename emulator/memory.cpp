@@ -38,7 +38,7 @@ void memory_control_unit::load_nes_rom(string rom_path)
 
 	// writing to the memory array
 	int ix_mem = 0xffff - ROM_BASE;
-	for (int i = (int)vec.size() - CHR_SIZE - 1; i >= NES_HEADER_SIZE; i--)
+	for (int i = (int)vec.size() - (vec.size() > 17000 ? CHR_SIZE : 0) - 1; i >= NES_HEADER_SIZE; i--)
 	{
 		rom[ix_mem] = vec[i];
 		ix_mem--;
@@ -49,8 +49,20 @@ pair<uint16_t, uint8_t> memory_control_unit::load_absolute(uint16_t address)
 {
 	if (address >= ROM_BASE)
 		return {address, rom[address - ROM_BASE]};
-	else if (address < RAM_SIZE)
-		return {address, ram[address]};
+	else if (address >= APU_BASE && address < APU_BASE + APU_SIZE)
+	{
+		return {address, apu_registers[address - APU_BASE]};
+	}
+	else if (address >= PPU_BASE && address < APU_BASE)
+	{
+		address = uint16_t(PPU_BASE + address % PPU_SIZE);
+		return {address, ppu_registers[address - PPU_BASE]};
+	}
+	else if (address >= APU_BASE + APU_SIZE && address < ROM_BASE)
+	{
+		// Cartridge, but not ROM.
+		return {address, 0};
+	}
 	else
 	{
 		// Mirror RAM in remaining address space. TODO: write test?
@@ -102,9 +114,18 @@ uint16_t memory_control_unit::store_absolute(uint16_t address, uint8_t data)
 	{
 		// Write in ROM, do nothing. TODO: write test?
 	}
-	else if (address < RAM_SIZE)
+	else if (address >= APU_BASE && address < APU_BASE + APU_SIZE)
 	{
-		ram[address] = data;
+		apu_registers[address - APU_BASE] = data;
+	}
+	else if (address >= PPU_BASE && address < APU_BASE)
+	{
+		address = uint16_t(PPU_BASE + address % PPU_SIZE);
+		ppu_registers[address - PPU_BASE] = data;
+	}
+	else if (address >= APU_BASE + APU_SIZE && address < ROM_BASE)
+	{
+		// Cartridge, but not ROM.
 	}
 	else
 	{
