@@ -64,6 +64,12 @@ extern register_bank registers;
 // Memory control unit.
 extern memory_control_unit mcu;
 
+// Load rom and initialize cpu power up state
+void cpu_init(const string rom_path);
+
+// Execute whatever the cpu should do within one clock cycle
+void cpu_clock();
+
 // Writes a log line using current register values.
 void write_log();
 
