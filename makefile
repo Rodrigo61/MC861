@@ -23,7 +23,7 @@ CROSS_AS=${EXT}/asm6/asm6
 all: ${BIN} ${LOG} ${NES}
 
 ${NES}: $(OBJFILES)
-	$(CXX) $< -o $@ $(LDFLAGS)
+	${CC} ${CCFLAGS} $(OBJFILES) -o ${NES} $(LDFLAGS)
 
 %.o: %.cpp; $(CXX) $< -o $@ $(CXXFLAGS)
 
