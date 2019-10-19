@@ -36,12 +36,22 @@ void memory_control_unit::load_nes_rom(string rom_path)
 	// read the data:
 	vec.insert(vec.begin(), istream_iterator<uint8_t>(file), istream_iterator<uint8_t>());
 
+	bool has_chr = vec.size() > 17000;
+
 	// writing to the memory array
 	int ix_mem = 0xffff - ROM_BASE;
-	for (int i = (int)vec.size() - (vec.size() > 17000 ? CHR_SIZE : 0) - 1; i >= NES_HEADER_SIZE; i--)
+	for (int i = (int)vec.size() - (has_chr ? CHR_SIZE : 0) - 1; i >= NES_HEADER_SIZE; i--)
 	{
 		rom[ix_mem] = vec[i];
 		ix_mem--;
+	}
+
+	if (has_chr)
+	{
+		for (int i = 0; i < CHR_SIZE; i++)
+		{
+			chr[i] = vec[i];
+		}
 	}
 }
 

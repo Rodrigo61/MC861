@@ -1,4 +1,5 @@
 #include "cpu.hpp"
+#include "ppu.hpp"
 
 int main(int argc, const char *argv[])
 {
@@ -17,6 +18,8 @@ int main(int argc, const char *argv[])
 	while (true)
 	{
 		system_clock++;
+
+		ppu_clock();
 
 		if (system_clock % 3 == 0)
 		{

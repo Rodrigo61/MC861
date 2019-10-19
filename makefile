@@ -1,5 +1,9 @@
 CC=g++
-CCFLAGS=-std=c++14 -g -Wall -Wextra -Wno-unused-result -Wconversion -Wfatal-errors -Wsign-conversion 
+CCFLAGS=-std=c++14 -g  -Wall -Wextra -Wno-unused-result -Wconversion -Wfatal-errors -Wsign-conversion
+
+CXX ?= g++
+CXXFLAGS += -c -Wall $(shell pkg-config --cflags opencv)
+LDFLAGS += $(shell pkg-config --libs opencv)
 
 TST=./tst
 RES=./res
@@ -19,10 +23,9 @@ CROSS_AS=${EXT}/asm6/asm6
 all: ${BIN} ${LOG} ${NES}
 
 ${NES}: $(OBJFILES)
-	${CC} ${CCFLAGS} $(OBJFILES) -o ${NES}
+	$(CXX) $< -o $@ $(LDFLAGS)
 
-%.o: %.cpp
-	$(CXX) ${CCFLAGS} -c $< -o $@ $(CPPFLAGS)
+%.o: %.cpp; $(CXX) $< -o $@ $(CXXFLAGS)
 
 ${BIN}:
 	@mkdir -p ${BIN}

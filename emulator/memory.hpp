@@ -37,6 +37,9 @@ private:
 	// APU memory mapped registers.
 	uint8_t apu_registers[APU_SIZE];
 
+	// CHR ROM(RAM)
+	uint8_t chr[CHR_SIZE];
+
 public:
 	memory_control_unit();
 
@@ -89,4 +92,11 @@ public:
 	uint16_t store_indirect_x(uint8_t zero_page_address, uint8_t data);
 
 	uint16_t store_indirect_y(uint8_t zero_page_address, uint8_t data);
+
+
+	// TODO: refactor below
+	uint8_t* get_chr()
+	{
+		return chr;
+	}
 };
