@@ -17,6 +17,7 @@ uint8_t get_high(uint16_t data)
 
 void printls(uint8_t a, uint8_t x, uint8_t y, uint16_t sp, uint16_t pc, uint8_t p, uint16_t addr, uint8_t data)
 {
+/*
 	cout << setfill('0')
 		 << "| pc = 0x" << hex << setw(4) << pc
 		 << " | a = 0x" << hex << setw(2) << (unsigned)a
@@ -26,10 +27,12 @@ void printls(uint8_t a, uint8_t x, uint8_t y, uint16_t sp, uint16_t pc, uint8_t 
 		 << " | p[NV-BDIZC] = " << bitset<8>(p)
 		 << " | MEM[0x" << hex << setw(4) << addr
 		 << "] = 0x" << hex << setw(2) << (unsigned)data << " |" << endl;
+*/
 }
 
 void print(uint8_t a, uint8_t x, uint8_t y, uint16_t sp, uint16_t pc, uint8_t p)
 {
+/*
 	cout << setfill('0')
 		 << "| pc = 0x" << hex << setw(4) << pc
 		 << " | a = 0x" << hex << setw(2) << (unsigned)a
@@ -37,4 +40,5 @@ void print(uint8_t a, uint8_t x, uint8_t y, uint16_t sp, uint16_t pc, uint8_t p)
 		 << " | y = 0x" << hex << setw(2) << (unsigned)y
 		 << " | sp = 0x" << hex << setw(4) << sp
 		 << " | p[NV-BDIZC] = " << bitset<8>(p) << " |" << endl;
+*/
 }

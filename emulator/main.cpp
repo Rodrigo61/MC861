@@ -11,6 +11,7 @@ int main(int argc, const char *argv[])
 	}
 
 	cpu_init(argv[1]);
+	ppu_init();
 
 	// this system clock is at same speed as PPU clock
 	long long system_clock = 0;

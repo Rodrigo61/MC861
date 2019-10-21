@@ -1,6 +1,6 @@
 #include "ppu.hpp"
 
-uint8_t pattern_table[2][16][16];
+uint8_t pattern_table[2][16][16][2][8]; // 2 tables of 16x16 tiles, each one using 2 planes of 8 bytes
 uint8_t palettes[32];
 uint8_t nametable[2][32][32];
 uint8_t attribute_table[64];
@@ -10,35 +10,119 @@ struct color
     uint8_t R, G, B;
 } colors[64];
 
+ctrl PPUCTRL;
+status PPUSTATUS;
+mask PPUMASK;
+
+cv::Mat screen = cv::Mat::zeros( 256, 240, CV_8UC3 );
+char window[] = "ONESSENO - OneNESSystemNotOfficial";
+
 uint16_t cycle, scanline;
 
 color get_pixel_color(int palette_idx)
 {
-    uint8_t tile_x = scanline / 7;
-    uint8_t tile_y = cycle / 7;
-    uint8_t pattern_lo = pattern_table[0][tile_x][tile_y];
-    uint8_t pattern_hi = pattern_table[1][tile_x][tile_y];
-    uint8_t color_idx = (pattern_hi << 1) & pattern_lo;
-    
-    return colors[palettes[4 * palette_idx + color_idx]];
+    /*
+    uint8_t tile_x = cycle / 8;
+    uint8_t tile_y = scanline / 8;
+    uint8_t pixel_x = cycle % 8;
+    uint8_t pixel_y = scanline % 8;
+    uint8_t pattern_lo = (pattern_table[0][tile_y][tile_x][0][pixel_y] & (1 << pixel_x)) >> pixel_x;
+    uint8_t pattern_hi = (pattern_table[0][tile_y][tile_x][1][pixel_y] & (1 << pixel_x)) >> pixel_x;
+    uint8_t color_idx = (pattern_hi << 1) | pattern_lo;
+    switch (color_idx)
+    {
+    case 0:
+        return colors[0];
+        break;
+    case 1:
+        return colors[0x15];
+        break;
+    case 2:
+        return colors[0x29];
+        break;
+    default:
+        return colors[0x0F];
+        break;
+    }
+//    return colors[palettes[4 * palette_idx + color_idx]];
+*/
 }
 
 void print_pixel()
-{
-    char window[] = "ONESSENO - OneNESSystemNotOfficial";
-
-    cv::Mat image = cv::Mat::zeros( 256, 240, CV_8UC3 );
-    
+{    
     int palette_idx = 0; // TODO: retrieve from attribute table.
     color pixel_color = get_pixel_color(palette_idx);
 
-    image.at<cv::Vec3b>(scanline % 256, cycle % 240) = cv::Vec3b(pixel_color.R, pixel_color.G, pixel_color.B);
-    imshow( window, image );
-    cv::waitKey(1);
+    screen.at<cv::Vec3b>(scanline % 256, cycle % 240) = cv::Vec3b(pixel_color.R, pixel_color.G, pixel_color.B);
+}
+
+color get_pixel_color(int pattern_tbl_idx, int palette_idx, int pos_y, int pos_x)
+{
+    uint8_t tile_x = pos_x / 8; // relative to screen
+    uint8_t tile_y = pos_y / 8; // relative to screen
+    uint8_t pixel_x = pos_x % 8; // relative to tile
+    uint8_t pixel_y = pos_y % 8; // relative to tile
+    uint8_t pattern_lo = (pattern_table[pattern_tbl_idx][tile_y][tile_x][0][pixel_y] & (1 << (7 - pixel_x))) >> (7 - pixel_x);
+    uint8_t pattern_hi = (pattern_table[pattern_tbl_idx][tile_y][tile_x][1][pixel_y] & (1 << (7 - pixel_x))) >> (7 - pixel_x);
+
+    uint8_t color_idx = (pattern_hi << 1) | pattern_lo;
+    return colors[palettes[4 * palette_idx + color_idx]];
+}
+
+void print_pattern_table()
+{
+    auto print_pattern = [&] (int table_idx)
+    {
+        cv::Mat table = cv::Mat::zeros( 128, 128, CV_8UC3 );
+        string window = "Pattern " + to_string(table_idx);
+        for (int pos_y = 0; pos_y < 128; pos_y++)
+        {
+            for (int pos_x = 0; pos_x < 128; pos_x++)
+            {
+                color pixel_color = get_pixel_color(table_idx, 0, pos_y, pos_x);
+                table.at<cv::Vec3b>(pos_y, pos_x) = cv::Vec3b(pixel_color.R, pixel_color.G, pixel_color.B);
+            }
+        }
+        imshow(window, table);
+    };
+
+    print_pattern(0);
+    print_pattern(1);
+}
+
+void init_test_palettes()
+{
+    palettes[0] = 0x30;
+    for (uint8_t i = 1; i < 32; i++)
+    {
+        palettes[i] = uint8_t(pow(2, i)) % 0x30;
+    }
 }
 
 void ppu_init()
 {
+    auto chr = mcu.get_chr();
+    int chr_it = 0;
+
+    for (int side = 0; side < 2; side++)
+    {
+        for (int row = 0; row < 16; row++)
+        {
+            for (int col = 0; col < 16; col++)
+            {
+                for (int plane = 0; plane < 2; plane++)
+                {
+                    for (int byte_row = 0; byte_row < 8; byte_row++)
+                    {
+                        pattern_table[side][row][col][plane][byte_row] = chr[chr_it++];
+                    }
+                }
+            }
+        }
+    }
+
+    init_test_palettes();
+
     colors[0x01] = {0, 30, 116};
     colors[0x02] = {8, 16, 144};
     colors[0x03] = {48, 0, 136};
@@ -105,14 +189,19 @@ void ppu_init()
     colors[0x3D] = {160, 162, 160};
     colors[0x3E] = {0, 0, 0};
     colors[0x3F] = {0, 0, 0};
+
+    print_pattern_table();
+
 }
+
+void generate_nmi(){}
 
 void ppu_clock()
 {
     print_pixel();
 
     if (scanline >= 241 && cycle == 1)
-        //generateNMI();
+        generate_nmi();
     
     cycle++;
 
@@ -123,6 +212,8 @@ void ppu_clock()
         if (scanline >= 261)
         {
             scanline = 0;
+            imshow( window, screen );
+            cv::waitKey(1);
         }
     }
 }

@@ -48,3 +48,4 @@ auto operator<<(ostream &os, Iterable v) -> decltype(os << *begin(v))
 }
 
 #define debug(...) _dbg(#__VA_ARGS__, __VA_ARGS__)
+//#define debug(...) //

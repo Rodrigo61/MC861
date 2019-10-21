@@ -50,7 +50,7 @@ void memory_control_unit::load_nes_rom(string rom_path)
 	{
 		for (int i = 0; i < CHR_SIZE; i++)
 		{
-			chr[i] = vec[i];
+			chr[i] = vec[vec.size() - CHR_SIZE + i];
 		}
 	}
 }
