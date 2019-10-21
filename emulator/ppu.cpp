@@ -4,7 +4,7 @@
 uint8_t pattern_table[2][16][16][2][8]; // 2 tables of 16x16 tiles, each one using 2 planes of 8 bytes
 uint8_t palettes[32];
 uint8_t nametable[2][30][32];
-uint8_t attribute_table[64];
+uint8_t attribute_table[8][8];
 
 struct color
 {
@@ -41,9 +41,27 @@ color get_pixel_from_nametable(int palette_idx)
     return get_pixel_color(1, palette_idx, tile_y, tile_x, pixel_y, pixel_x);
 }
 
+int get_palette_idx_from_attr_tbl()
+{
+    uint8_t area_y = (scanline / 8) / 4;
+    uint8_t area_x = (cycle / 8) / 4;
+    uint8_t attribute = attribute_table[area_y][area_x];
+    uint8_t tile_y = (scanline / 16) % 2;
+    uint8_t tile_x = (cycle / 16) % 2;
+
+    if (tile_x == 0 && tile_y == 0)
+        return attribute & 0x3;
+    if (tile_x == 1 && tile_y == 0)
+        return (attribute >> 2) & 0x3;
+    if (tile_x == 0 && tile_y == 1)
+        return (attribute >> 4) & 0x3;
+    if (tile_x == 1 && tile_y == 1)
+        return (attribute >> 6) & 0x3;
+}
+
 void print_pixel()
 {    
-    int palette_idx = 0; // TODO: retrieve from attribute table.
+    int palette_idx = get_palette_idx_from_attr_tbl();
     color pixel_color = get_pixel_from_nametable(palette_idx);
 
     screen.at<cv::Vec3b>(scanline % 240, cycle % 256) = cv::Vec3b(pixel_color.B, pixel_color.G, pixel_color.R);
@@ -59,8 +77,8 @@ void print_pattern_table()
         {
             for (int pos_x = 0; pos_x < 128; pos_x++)
             {
-                uint8_t tile_x = pos_x / 8; // relative to screen
-                uint8_t tile_y = pos_y / 8; // relative to screen
+                uint8_t tile_x = pos_x / 8;  // relative to screen
+                uint8_t tile_y = pos_y / 8;  // relative to screen
                 uint8_t pixel_x = pos_x % 8; // relative to tile
                 uint8_t pixel_y = pos_y % 8; // relative to tile
                 color pixel_color = get_pixel_color(table_idx, 0, tile_y, tile_x, pixel_y, pixel_x);
@@ -242,7 +260,6 @@ void ppu_write(uint16_t address, uint8_t data)
     {
         // palettes
         address %= 0x3F00;
-        cout << "address(MOD) = " << hex << int(address) << "  data = " << int(data) << endl;
         palettes[uint8_t(address)] = data;
         for (uint8_t i = 0; i < 32; i += 4)
         {
@@ -250,11 +267,17 @@ void ppu_write(uint16_t address, uint8_t data)
         }
         
     }
-    else
+    else if (address >= 0x2000 && address < 0x23C0)
     {
         // background
         address %= 0x2000;
         nametable[0][address / 32][address % 32] = data;
+    }
+    else
+    {
+        // attribute table
+        address %= 0x23C0;
+        attribute_table[address / 8][address % 8] = data;
     }
 }
 
