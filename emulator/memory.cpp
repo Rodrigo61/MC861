@@ -1,5 +1,6 @@
 #include "memory.hpp"
 #include "cpu.hpp"
+#include "ppu.hpp"
 
 memory_control_unit::memory_control_unit()
 {
@@ -65,8 +66,7 @@ pair<uint16_t, uint8_t> memory_control_unit::load_absolute(uint16_t address)
 	}
 	else if (address >= PPU_BASE && address < APU_BASE)
 	{
-		address = uint16_t(PPU_BASE + address % PPU_SIZE);
-		return {address, ppu_registers[address - PPU_BASE]};
+		return {address, read_register(address)};
 	}
 	else if (address >= APU_BASE + APU_SIZE && address < ROM_BASE)
 	{
@@ -130,8 +130,7 @@ uint16_t memory_control_unit::store_absolute(uint16_t address, uint8_t data)
 	}
 	else if (address >= PPU_BASE && address < APU_BASE)
 	{
-		address = uint16_t(PPU_BASE + address % PPU_SIZE);
-		ppu_registers[address - PPU_BASE] = data;
+		write_register(address, data);
 	}
 	else if (address >= APU_BASE + APU_SIZE && address < ROM_BASE)
 	{

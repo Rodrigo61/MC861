@@ -31,9 +31,6 @@ private:
 	// rom byte array.
 	uint8_t rom[ROM_SIZE];
 
-	// PPU memory mapped registers.
-	uint8_t ppu_registers[PPU_SIZE];
-
 	// APU memory mapped registers.
 	uint8_t apu_registers[APU_SIZE];
 

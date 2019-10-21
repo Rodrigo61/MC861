@@ -1,8 +1,9 @@
 #include "ppu.hpp"
+#define dhex(x) cout << #x << " = " << hex << int(x) << endl
 
 uint8_t pattern_table[2][16][16][2][8]; // 2 tables of 16x16 tiles, each one using 2 planes of 8 bytes
 uint8_t palettes[32];
-uint8_t nametable[2][32][32];
+uint8_t nametable[2][30][32];
 uint8_t attribute_table[64];
 
 struct color
@@ -14,59 +15,38 @@ ctrl PPUCTRL;
 status PPUSTATUS;
 mask PPUMASK;
 
-cv::Mat screen = cv::Mat::zeros( 256, 240, CV_8UC3 );
+cv::Mat screen = cv::Mat::zeros( 240, 256, CV_8UC3 );
 char window[] = "ONESSENO - OneNESSystemNotOfficial";
 
 uint16_t cycle, scanline;
+bool address_latch;
+uint16_t vram_addr;
 
-color get_pixel_color(int palette_idx)
+color get_pixel_color(int pattern_tbl_idx, int palette_idx, int tile_y, int tile_x, int pixel_y, int pixel_x)
 {
-    /*
-    uint8_t tile_x = cycle / 8;
-    uint8_t tile_y = scanline / 8;
-    uint8_t pixel_x = cycle % 8;
-    uint8_t pixel_y = scanline % 8;
-    uint8_t pattern_lo = (pattern_table[0][tile_y][tile_x][0][pixel_y] & (1 << pixel_x)) >> pixel_x;
-    uint8_t pattern_hi = (pattern_table[0][tile_y][tile_x][1][pixel_y] & (1 << pixel_x)) >> pixel_x;
-    uint8_t color_idx = (pattern_hi << 1) | pattern_lo;
-    switch (color_idx)
-    {
-    case 0:
-        return colors[0];
-        break;
-    case 1:
-        return colors[0x15];
-        break;
-    case 2:
-        return colors[0x29];
-        break;
-    default:
-        return colors[0x0F];
-        break;
-    }
-//    return colors[palettes[4 * palette_idx + color_idx]];
-*/
-}
-
-void print_pixel()
-{    
-    int palette_idx = 0; // TODO: retrieve from attribute table.
-    color pixel_color = get_pixel_color(palette_idx);
-
-    screen.at<cv::Vec3b>(scanline % 256, cycle % 240) = cv::Vec3b(pixel_color.R, pixel_color.G, pixel_color.B);
-}
-
-color get_pixel_color(int pattern_tbl_idx, int palette_idx, int pos_y, int pos_x)
-{
-    uint8_t tile_x = pos_x / 8; // relative to screen
-    uint8_t tile_y = pos_y / 8; // relative to screen
-    uint8_t pixel_x = pos_x % 8; // relative to tile
-    uint8_t pixel_y = pos_y % 8; // relative to tile
     uint8_t pattern_lo = (pattern_table[pattern_tbl_idx][tile_y][tile_x][0][pixel_y] & (1 << (7 - pixel_x))) >> (7 - pixel_x);
     uint8_t pattern_hi = (pattern_table[pattern_tbl_idx][tile_y][tile_x][1][pixel_y] & (1 << (7 - pixel_x))) >> (7 - pixel_x);
 
     uint8_t color_idx = (pattern_hi << 1) | pattern_lo;
     return colors[palettes[4 * palette_idx + color_idx]];
+}
+
+color get_pixel_from_nametable(int palette_idx)
+{
+    uint8_t tile_x = nametable[0][(scanline / 8)][(cycle / 8)] % 16;
+    uint8_t tile_y = nametable[0][(scanline / 8)][(cycle / 8)] / 16;
+    uint8_t pixel_x = cycle % 8;
+    uint8_t pixel_y = scanline % 8;
+
+    return get_pixel_color(1, palette_idx, tile_y, tile_x, pixel_y, pixel_x);
+}
+
+void print_pixel()
+{    
+    int palette_idx = 0; // TODO: retrieve from attribute table.
+    color pixel_color = get_pixel_from_nametable(palette_idx);
+
+    screen.at<cv::Vec3b>(scanline % 240, cycle % 256) = cv::Vec3b(pixel_color.B, pixel_color.G, pixel_color.R);
 }
 
 void print_pattern_table()
@@ -79,11 +59,17 @@ void print_pattern_table()
         {
             for (int pos_x = 0; pos_x < 128; pos_x++)
             {
-                color pixel_color = get_pixel_color(table_idx, 0, pos_y, pos_x);
+                uint8_t tile_x = pos_x / 8; // relative to screen
+                uint8_t tile_y = pos_y / 8; // relative to screen
+                uint8_t pixel_x = pos_x % 8; // relative to tile
+                uint8_t pixel_y = pos_y % 8; // relative to tile
+                color pixel_color = get_pixel_color(table_idx, 0, tile_y, tile_x, pixel_y, pixel_x);
                 table.at<cv::Vec3b>(pos_y, pos_x) = cv::Vec3b(pixel_color.R, pixel_color.G, pixel_color.B);
             }
         }
-        imshow(window, table);
+        auto scaled_table = table;
+        cv::resize(table, scaled_table, cv::Size(), 2, 2);
+        imshow(window, scaled_table);
     };
 
     print_pattern(0);
@@ -101,6 +87,8 @@ void init_test_palettes()
 
 void ppu_init()
 {
+    address_latch = false;
+
     auto chr = mcu.get_chr();
     int chr_it = 0;
 
@@ -194,14 +182,21 @@ void ppu_init()
 
 }
 
-void generate_nmi(){}
+void print_screen()
+{
+    auto scaled_screen = screen;
+    cv::resize(screen, scaled_screen, cv::Size(), 2, 2);
+    imshow(window, scaled_screen);
+    cv::waitKey(1);
+}
 
 void ppu_clock()
 {
-    print_pixel();
+    if (cycle < 256 && scanline < 240)
+        print_pixel();
 
     if (scanline >= 241 && cycle == 1)
-        generate_nmi();
+        PPUSTATUS.flags.vblank = 1;
     
     cycle++;
 
@@ -211,9 +206,11 @@ void ppu_clock()
         scanline++;
         if (scanline >= 261)
         {
+            PPUSTATUS.flags.vblank = 0;
             scanline = 0;
-            imshow( window, screen );
-            cv::waitKey(1);
+            print_screen();
+            //imshow( window, screen );
+            //cv::waitKey(1);
         }
     }
 }
@@ -225,16 +222,40 @@ uint8_t read_register(uint16_t address)
     {
     case 0x2002:
         // STATUS
-        //TODO: reset latch
+        address_latch = false;
+        data = PPUSTATUS.byte;
         break;
     case 0x2004:
-        debug("read 0x2004 not implemented.");
+        break;
     case 0x2007:
-        debug("read 0x2007 not implemented.");
+        break;
     default:
         break;
     }
     return data;
+}
+
+void ppu_write(uint16_t address, uint8_t data)
+{
+    cout << "address = " << hex << int(address) << "  data = " << int(data) << endl;
+    if (address >= 0x3F00)
+    {
+        // palettes
+        address %= 0x3F00;
+        cout << "address(MOD) = " << hex << int(address) << "  data = " << int(data) << endl;
+        palettes[uint8_t(address)] = data;
+        for (uint8_t i = 0; i < 32; i += 4)
+        {
+            palettes[i] = palettes[0];
+        }
+        
+    }
+    else
+    {
+        // background
+        address %= 0x2000;
+        nametable[0][address / 32][address % 32] = data;
+    }
 }
 
 void write_register(uint16_t address, uint8_t data)
@@ -243,20 +264,31 @@ void write_register(uint16_t address, uint8_t data)
     {
     case 0x2000:
         // CONTROL
-        //PPUCTRL.byte = data;
+        PPUCTRL.byte = data;
         break;
     case 0x2003:
-        debug("write 0x2003 not implemented.");
+        break;
     case 0x2004:
-        debug("write 0x2004 not implemented.");
+        break;
     case 0x2005:
-        debug("write 0x2005 not implemented.");
+        break;
     case 0x2006:
-        debug("write 0x2006 not implemented.");
+        if (address_latch)
+        {
+            vram_addr = uint16_t((vram_addr & 0xFF00) | data);
+        }
+        else
+        {
+            vram_addr = uint16_t((vram_addr & 0x00FF) | (data << 8));
+        }
+        address_latch = !address_latch;
+        break;
     case 0x2007:
-        debug("write 0x2007 not implemented.");
+        ppu_write(vram_addr, data);
+        vram_addr += PPUCTRL.flags.increment_mode ? 32 : 1;
+        break;
     case 0x4014:
-        debug("write 0x4014 not implemented.");
+        break;
     default:
         break;
     }
