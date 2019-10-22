@@ -78,17 +78,13 @@ int get_palette_idx_from_attr_tbl()
 }
 
 color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx, 
-                                    uint8_t pat_tbl_tile_y, uint8_t pat_tbl_tile_x)
+                                    uint8_t patt_tbl_tile_y, uint8_t patt_tbl_tile_x)
 {
-    /*
-     pat_tbl_tile_x/y are the tile's indices in the pattern table
-    */
-
     int palette_idx = get_palette_idx_from_attr_tbl();
 
     uint8_t patt_bit_0 = pattern_table[pattern_tbl_idx]
-                                      [pat_tbl_tile_y]
-                                      [pat_tbl_tile_x]
+                                      [patt_tbl_tile_y]
+                                      [patt_tbl_tile_x]
                                       [0]
                                       [pixel_y()];
     
@@ -96,8 +92,8 @@ color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx,
     patt_bit_0 = get_bit_range(patt_bit_0, 7 - pixel_x(), 7 - pixel_x());
                                         
     uint8_t patt_bit_1 = pattern_table[pattern_tbl_idx]
-                                      [pat_tbl_tile_y]
-                                      [pat_tbl_tile_x]
+                                      [patt_tbl_tile_y]
+                                      [patt_tbl_tile_x]
                                       [1]
                                       [pixel_y()];
     
@@ -110,24 +106,22 @@ color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx,
     return colors[palettes[4 * palette_idx + color_idx]];
 }
 
-color get_pixel_color_from_nametable()
+color get_pixel_color_from_nametable(uint8_t nametable_idx, uint8_t patt_tbl_idx)
 {
-    // Using division to get indices of pattern table because it's 16x16 tiles
-    uint8_t pat_tbl_tile_x = nametable[0][tile_y()][tile_x()] % 16;
-    uint8_t pat_tbl_tile_y = nametable[0][tile_y()][tile_x()] / 16;
+    // Using division to get indices of the pattern table because it's 16x16 tiles
+    uint8_t patt_tbl_tile_x = nametable[nametable_idx][tile_y()][tile_x()] % 16;
+    uint8_t patt_tbl_tile_y = nametable[nametable_idx][tile_y()][tile_x()] / 16;
 
-    return get_pixel_color_from_patt_tbl(1, pat_tbl_tile_y, pat_tbl_tile_x);
+    return get_pixel_color_from_patt_tbl(patt_tbl_idx, patt_tbl_tile_y, patt_tbl_tile_x);
 }
 
-void print_pixel()
+void print_pixel(uint8_t nametable_idx, uint8_t patt_tbl_idx)
 {    
-    color pixel_color = get_pixel_color_from_nametable();
-    uint8_t pixel_y = scanline % SCREEN_PIXEL_HEIGHT;
-    uint8_t pixel_x = cycle % SCREEN_PIXEL_WIDTH;
+    color pixel_color = get_pixel_color_from_nametable(nametable_idx, patt_tbl_idx);
 
-    screen.at<cv::Vec3b>(pixel_y, pixel_x) = cv::Vec3b(pixel_color.B, 
-                                                       pixel_color.G, 
-                                                       pixel_color.R);
+    screen.at<cv::Vec3b>(scanline, cycle) = cv::Vec3b(pixel_color.B, 
+                                                      pixel_color.G, 
+                                                      pixel_color.R);
 }
 
 void print_pattern_table()
@@ -221,7 +215,7 @@ void ppu_clock()
     if (cycle < SCREEN_PIXEL_WIDTH && scanline < SCREEN_PIXEL_HEIGHT)
     {
         // Only prints pixels that are within the visible area of screen
-        print_pixel();
+        print_pixel(0, 1);
     }
         
     // Checks for VBlank range
