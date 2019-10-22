@@ -80,30 +80,39 @@ int get_palette_idx_from_attr_tbl()
 color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx, 
                                     uint8_t pat_tbl_tile_y, uint8_t pat_tbl_tile_x)
 {
-    // pat_tbl_tile_x/y are the tile's indices in the pattern table
+    /*
+     pat_tbl_tile_x/y are the tile's indices in the pattern table
+    */
 
     int palette_idx = get_palette_idx_from_attr_tbl();
 
-    uint8_t pattern_lo = pattern_table[pattern_tbl_idx]
+    uint8_t patt_bit_0 = pattern_table[pattern_tbl_idx]
                                       [pat_tbl_tile_y]
                                       [pat_tbl_tile_x]
                                       [0]
                                       [pixel_y()];
-    pattern_lo = (pattern_lo & (1 << (7 - pixel_x()))) >> (7 - pixel_x());
+    
+    // MSB corresponds to the most left pixel
+    patt_bit_0 = get_bit_range(patt_bit_0, 7 - pixel_x(), 7 - pixel_x());
                                         
-    uint8_t pattern_hi = pattern_table[pattern_tbl_idx]
+    uint8_t patt_bit_1 = pattern_table[pattern_tbl_idx]
                                       [pat_tbl_tile_y]
                                       [pat_tbl_tile_x]
                                       [1]
                                       [pixel_y()];
-    pattern_hi = (pattern_hi & (1 << (7 - pixel_x()))) >> (7 - pixel_x());
+    
+    // MSB corresponds to the most left pixel
+    patt_bit_1 = get_bit_range(patt_bit_1, 7 - pixel_x(), 7 - pixel_x());
 
-    uint8_t color_idx = (pattern_hi << 1) | pattern_lo;
+    // Building the two bits color_idx
+    uint8_t color_idx = (patt_bit_1 << 1) | patt_bit_0;
+
     return colors[palettes[4 * palette_idx + color_idx]];
 }
 
 color get_pixel_color_from_nametable()
 {
+    // Using division to get indices of pattern table because it's 16x16 tiles
     uint8_t pat_tbl_tile_x = nametable[0][tile_y()][tile_x()] % 16;
     uint8_t pat_tbl_tile_y = nametable[0][tile_y()][tile_x()] / 16;
 
