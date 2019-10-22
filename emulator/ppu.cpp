@@ -1,112 +1,169 @@
 #include "ppu.hpp"
-#define dhex(x) cout << #x << " = " << hex << int(x) << endl
 
-uint8_t pattern_table[2][16][16][2][8]; // 2 tables of 16x16 tiles, each one using 2 planes of 8 bytes
+#define SCREEN_PIXEL_HEIGHT 240
+#define SCREEN_PIXEL_WIDTH 256
+
+// 2 tables of 16x16 tiles, each one using 2 planes of 8 bytes
+uint8_t pattern_table[2][16][16][2][8];
+
+// 4 BG palettes, 4 FG palettes. palettes[0] is backdrop
 uint8_t palettes[32];
+
+// 2 nametables of 30x32 tiles for background
 uint8_t nametable[2][30][32];
+
+// 8x8 attribute table, each byte controls the palette 4×4 tile part of the nametable
+// and is divided into four 2-bit areas. Each area covers 2×2 tiles
 uint8_t attribute_table[8][8];
 
-struct color
-{
-    uint8_t R, G, B;
-} colors[64];
-
+// CPU's shared registers
 ctrl PPUCTRL;
 status PPUSTATUS;
 mask PPUMASK;
 
-cv::Mat screen = cv::Mat::zeros( 240, 256, CV_8UC3 );
-char window[] = "ONESSENO - OneNESSystemNotOfficial";
+// OpenCV's stuff to show the game's screen
+cv::Mat screen = cv::Mat::zeros(SCREEN_PIXEL_HEIGHT, SCREEN_PIXEL_WIDTH, CV_8UC3);
+string windows_title = "ONESSENO - OneNESSystemNotOfficial";
 
+// Below are two variables that use the same nomenclature of original NES systems
+// cycle = current column; scanline = current row of the screen
+// These variables are not exactly 1 to 1 with row/line, because their range are
+// actually bigger than the screen's range
 uint16_t cycle, scanline;
-bool address_latch;
-uint16_t vram_addr;
 
-color get_pixel_color(int pattern_tbl_idx, int palette_idx, int tile_y, int tile_x, int pixel_y, int pixel_x)
+// Address used by CPU to write/read using registers $2006/$2007
+uint16_t vram_addr;
+bool address_latch;     // used to switch between low and high address
+
+// Functions that return the x/y position of the nametable's tile which 
+// the current scanline/cycle are within
+uint8_t tile_y() { return scanline / 8; }
+uint8_t tile_x() { return cycle / 8; }
+
+// Functions that return the pixel's x/y position relative to the 
+// current tile which the current scanline/cycle are within
+uint8_t pixel_y() { return scanline % 8; }
+uint8_t pixel_x() { return cycle % 8; }
+
+uint8_t get_bit_range(uint8_t source, uint8_t lsb, uint8_t msb)
 {
-    uint8_t pattern_lo = (pattern_table[pattern_tbl_idx][tile_y][tile_x][0][pixel_y] & (1 << (7 - pixel_x))) >> (7 - pixel_x);
-    uint8_t pattern_hi = (pattern_table[pattern_tbl_idx][tile_y][tile_x][1][pixel_y] & (1 << (7 - pixel_x))) >> (7 - pixel_x);
+    source >>= lsb;
+    source &= (1 << (msb - lsb + 1)) - 1;
+    return source;
+}
+
+int get_palette_idx_from_attr_tbl()
+{
+    // Retrieves the indices of the attribute that represents the 4x4 tiles area
+    // which the current scanline/cycle are within
+    uint8_t group_4x4_y = tile_y() / 4;
+    uint8_t group_4x4_x = tile_x() / 4;
+    uint8_t attribute = attribute_table[group_4x4_y][group_4x4_x];
+ 
+    // Retrieves which one of the 4 2x2 subgroups of the previous 4x4 the
+    // current scanline/cycle are within 
+    uint8_t group_2x2_y = (tile_y() / 2) % 2;
+    uint8_t group_2x2_x = (tile_x() / 2) % 2;
+
+    // Selecting the 2 bits related to the current 2x2 subgroup.
+    // attribute = (bottomright << 6) | (bottomleft << 4) | (topright << 2) | (topleft << 0)
+    if (group_2x2_x == 0 && group_2x2_y == 0)
+        return get_bit_range(attribute, 0, 1);
+    if (group_2x2_x == 1 && group_2x2_y == 0)
+        return get_bit_range(attribute, 2, 3);
+    if (group_2x2_x == 0 && group_2x2_y == 1)
+        return get_bit_range(attribute, 4, 5);
+    if (group_2x2_x == 1 && group_2x2_y == 1)
+        return get_bit_range(attribute, 6, 7);
+}
+
+color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx, 
+                                    uint8_t pat_tbl_tile_y, uint8_t pat_tbl_tile_x)
+{
+    // pat_tbl_tile_x/y are the tile's indices in the pattern table
+
+    int palette_idx = get_palette_idx_from_attr_tbl();
+
+    uint8_t pattern_lo = pattern_table[pattern_tbl_idx]
+                                      [pat_tbl_tile_y]
+                                      [pat_tbl_tile_x]
+                                      [0]
+                                      [pixel_y()];
+    pattern_lo = (pattern_lo & (1 << (7 - pixel_x()))) >> (7 - pixel_x());
+                                        
+    uint8_t pattern_hi = pattern_table[pattern_tbl_idx]
+                                      [pat_tbl_tile_y]
+                                      [pat_tbl_tile_x]
+                                      [1]
+                                      [pixel_y()];
+    pattern_hi = (pattern_hi & (1 << (7 - pixel_x()))) >> (7 - pixel_x());
 
     uint8_t color_idx = (pattern_hi << 1) | pattern_lo;
     return colors[palettes[4 * palette_idx + color_idx]];
 }
 
-color get_pixel_from_nametable(int palette_idx)
+color get_pixel_color_from_nametable()
 {
-    uint8_t tile_x = nametable[0][(scanline / 8)][(cycle / 8)] % 16;
-    uint8_t tile_y = nametable[0][(scanline / 8)][(cycle / 8)] / 16;
-    uint8_t pixel_x = cycle % 8;
-    uint8_t pixel_y = scanline % 8;
+    uint8_t pat_tbl_tile_x = nametable[0][tile_y()][tile_x()] % 16;
+    uint8_t pat_tbl_tile_y = nametable[0][tile_y()][tile_x()] / 16;
 
-    return get_pixel_color(1, palette_idx, tile_y, tile_x, pixel_y, pixel_x);
-}
-
-int get_palette_idx_from_attr_tbl()
-{
-    uint8_t area_y = (scanline / 8) / 4;
-    uint8_t area_x = (cycle / 8) / 4;
-    uint8_t attribute = attribute_table[area_y][area_x];
-    uint8_t tile_y = (scanline / 16) % 2;
-    uint8_t tile_x = (cycle / 16) % 2;
-
-    if (tile_x == 0 && tile_y == 0)
-        return attribute & 0x3;
-    if (tile_x == 1 && tile_y == 0)
-        return (attribute >> 2) & 0x3;
-    if (tile_x == 0 && tile_y == 1)
-        return (attribute >> 4) & 0x3;
-    if (tile_x == 1 && tile_y == 1)
-        return (attribute >> 6) & 0x3;
+    return get_pixel_color_from_patt_tbl(1, pat_tbl_tile_y, pat_tbl_tile_x);
 }
 
 void print_pixel()
 {    
-    int palette_idx = get_palette_idx_from_attr_tbl();
-    color pixel_color = get_pixel_from_nametable(palette_idx);
+    color pixel_color = get_pixel_color_from_nametable();
+    uint8_t pixel_y = scanline % SCREEN_PIXEL_HEIGHT;
+    uint8_t pixel_x = cycle % SCREEN_PIXEL_WIDTH;
 
-    screen.at<cv::Vec3b>(scanline % 240, cycle % 256) = cv::Vec3b(pixel_color.B, pixel_color.G, pixel_color.R);
+    screen.at<cv::Vec3b>(pixel_y, pixel_x) = cv::Vec3b(pixel_color.B, 
+                                                       pixel_color.G, 
+                                                       pixel_color.R);
 }
 
 void print_pattern_table()
 {
+    if (cycle != 0 || scanline != 0)
+    {
+        cout << "print_pattern_table function should be called before the first ppu_clock()." << endl;
+        cout << "because it uses scanline/cycle variables." << endl;
+        exit(1);
+    }
+
     auto print_pattern = [&] (int table_idx)
     {
         cv::Mat table = cv::Mat::zeros( 128, 128, CV_8UC3 );
-        string window = "Pattern " + to_string(table_idx);
-        for (int pos_y = 0; pos_y < 128; pos_y++)
+        string windows_title = "Pattern " + to_string(table_idx);
+        for (scanline = 0; scanline < 128; scanline++)
         {
-            for (int pos_x = 0; pos_x < 128; pos_x++)
+            for (cycle = 0; cycle < 128; cycle++)
             {
-                uint8_t tile_x = pos_x / 8;  // relative to screen
-                uint8_t tile_y = pos_y / 8;  // relative to screen
-                uint8_t pixel_x = pos_x % 8; // relative to tile
-                uint8_t pixel_y = pos_y % 8; // relative to tile
-                color pixel_color = get_pixel_color(table_idx, 0, tile_y, tile_x, pixel_y, pixel_x);
-                table.at<cv::Vec3b>(pos_y, pos_x) = cv::Vec3b(pixel_color.R, pixel_color.G, pixel_color.B);
+                color pixel_color = get_pixel_color_from_patt_tbl(table_idx, tile_y(), tile_x());
+                table.at<cv::Vec3b>(scanline, cycle) = cv::Vec3b(pixel_color.R, pixel_color.G, pixel_color.B);
             }
         }
         auto scaled_table = table;
         cv::resize(table, scaled_table, cv::Size(), 2, 2);
-        imshow(window, scaled_table);
+        imshow(windows_title, scaled_table);
     };
 
     print_pattern(0);
     print_pattern(1);
 }
 
-void init_test_palettes()
+void init_debug_palettes()
 {
     palettes[0] = 0x30;
     for (uint8_t i = 1; i < 32; i++)
     {
+        // this is a random function that I came up with,
+        // dont lose your time understanding or even reading this
         palettes[i] = uint8_t(pow(2, i)) % 0x30;
     }
 }
 
-void ppu_init()
+void load_chr_from_mcu()
 {
-    address_latch = false;
-
     auto chr = mcu.get_chr();
     int chr_it = 0;
 
@@ -126,75 +183,17 @@ void ppu_init()
             }
         }
     }
+}
 
-    init_test_palettes();
+void ppu_init()
+{
+    address_latch = false;
 
-    colors[0x01] = {0, 30, 116};
-    colors[0x02] = {8, 16, 144};
-    colors[0x03] = {48, 0, 136};
-    colors[0x04] = {68, 0, 100};
-    colors[0x05] = {92, 0, 48};
-    colors[0x06] = {84, 4, 0};
-    colors[0x07] = {60, 24, 0};
-    colors[0x08] = {32, 42, 0};
-    colors[0x09] = {8, 58, 0};
-    colors[0x0A] = {0, 64, 0};
-    colors[0x0B] = {0, 60, 0};
-    colors[0x0C] = {0, 50, 60};
-    colors[0x0D] = {0, 0, 0};
-    colors[0x0E] = {0, 0, 0};
-    colors[0x0F] = {0, 0, 0};
+    load_chr_from_mcu();
 
-    colors[0x10] = {152, 150, 152};
-    colors[0x11] = {8, 76, 196};
-    colors[0x12] = {48, 50, 236};
-    colors[0x13] = {92, 30, 228};
-    colors[0x14] = {136, 20, 176};
-    colors[0x15] = {160, 20, 100};
-    colors[0x16] = {152, 34, 32};
-    colors[0x17] = {120, 60, 0};
-    colors[0x18] = {84, 90, 0};
-    colors[0x19] = {40, 114, 0};
-    colors[0x1A] = {8, 124, 0};
-    colors[0x1B] = {0, 118, 40};
-    colors[0x1C] = {0, 102, 120};
-    colors[0x1D] = {0, 0, 0};
-    colors[0x1E] = {0, 0, 0};
-    colors[0x1F] = {0, 0, 0};
+    init_debug_palettes();
 
-    colors[0x20] = {236, 238, 236};
-    colors[0x21] = {76, 154, 236};
-    colors[0x22] = {120, 124, 236};
-    colors[0x23] = {176, 98, 236};
-    colors[0x24] = {228, 84, 236};
-    colors[0x25] = {236, 88, 180};
-    colors[0x26] = {236, 106, 100};
-    colors[0x27] = {212, 136, 32};
-    colors[0x28] = {160, 170, 0};
-    colors[0x29] = {116, 196, 0};
-    colors[0x2A] = {76, 208, 32};
-    colors[0x2B] = {56, 204, 108};
-    colors[0x2C] = {56, 180, 204};
-    colors[0x2D] = {60, 60, 60};
-    colors[0x2E] = {0, 0, 0};
-    colors[0x2F] = {0, 0, 0};
-
-    colors[0x30] = {236, 238, 236};
-    colors[0x31] = {168, 204, 236};
-    colors[0x32] = {188, 188, 236};
-    colors[0x33] = {212, 178, 236};
-    colors[0x34] = {236, 174, 236};
-    colors[0x35] = {236, 174, 212};
-    colors[0x36] = {236, 180, 176};
-    colors[0x37] = {228, 196, 144};
-    colors[0x38] = {204, 210, 120};
-    colors[0x39] = {180, 222, 120};
-    colors[0x3A] = {168, 226, 144};
-    colors[0x3B] = {152, 226, 180};
-    colors[0x3C] = {160, 214, 228};
-    colors[0x3D] = {160, 162, 160};
-    colors[0x3E] = {0, 0, 0};
-    colors[0x3F] = {0, 0, 0};
+    load_colors();
 
     print_pattern_table();
 
@@ -204,20 +203,28 @@ void print_screen()
 {
     auto scaled_screen = screen;
     cv::resize(screen, scaled_screen, cv::Size(), 2, 2);
-    imshow(window, scaled_screen);
+    imshow(windows_title, scaled_screen);
     cv::waitKey(1);
 }
 
 void ppu_clock()
 {
-    if (cycle < 256 && scanline < 240)
+    if (cycle < SCREEN_PIXEL_WIDTH && scanline < SCREEN_PIXEL_HEIGHT)
+    {
+        // Only prints pixels that are within the visible area of screen
         print_pixel();
-
+    }
+        
+    // Checks for VBlank range
     if (scanline >= 241 && cycle == 1)
+    {
         PPUSTATUS.flags.vblank = 1;
+        // TODO: generate NMI
+    }
     
     cycle++;
 
+    // Checks for the end of current frame
     if (cycle >= 341)
     {
         cycle = 0;
@@ -227,8 +234,6 @@ void ppu_clock()
             PPUSTATUS.flags.vblank = 0;
             scanline = 0;
             print_screen();
-            //imshow( window, screen );
-            //cv::waitKey(1);
         }
     }
 }
@@ -255,7 +260,6 @@ uint8_t read_register(uint16_t address)
 
 void ppu_write(uint16_t address, uint8_t data)
 {
-    cout << "address = " << hex << int(address) << "  data = " << int(data) << endl;
     if (address >= 0x3F00)
     {
         // palettes

@@ -1,8 +1,10 @@
+#pragma once
 #include "utils.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 #include "cpu.hpp"
+#include "colors.hpp"
 
 union ctrl
 {
@@ -48,6 +50,7 @@ union status
     } flags;
 	uint8_t byte;
 };
+
 
 // Initialize ppu power up state
 void ppu_init();
