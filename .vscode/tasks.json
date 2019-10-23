@@ -6,20 +6,24 @@
         {
             "label": "build",
             "type": "shell",
-            "options": {
-                "cwd": "${fileDirname}"
-            },
-            "command": "asm6f",
+            "command": "make",
             "args": [
-                "${fileBasenameNoExtension}.asm",
-                "${fileBasenameNoExtension}.nes",
-                "${fileBasenameNoExtension}.txt"
+                "-j8"
             ],
             "problemMatcher": [],
             "group": {
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "clean"
+            ],
+            "problemMatcher": []
         }
     ]
 }

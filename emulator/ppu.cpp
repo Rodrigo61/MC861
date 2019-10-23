@@ -75,6 +75,8 @@ int get_palette_idx_from_attr_tbl()
         return get_bit_range(attribute, 4, 5);
     if (group_2x2_x == 1 && group_2x2_y == 1)
         return get_bit_range(attribute, 6, 7);
+    
+    assert(false);
 }
 
 color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx, 
@@ -223,6 +225,7 @@ void ppu_clock()
     {
         PPUSTATUS.flags.vblank = 1;
         // TODO: generate NMI
+        print_screen();
     }
     
     cycle++;
@@ -236,7 +239,6 @@ void ppu_clock()
         {
             PPUSTATUS.flags.vblank = 0;
             scanline = 0;
-            print_screen();
         }
     }
 }

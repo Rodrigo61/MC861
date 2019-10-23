@@ -1,8 +1,8 @@
 CC=g++
 CCFLAGS=-std=c++14 -g  -Wall -Wextra -Wno-unused-result -Wconversion -Wfatal-errors -Wsign-conversion
 
-CXXFLAGS += -c -Wall $(shell pkg-config --cflags opencv)
-LDFLAGS += $(shell pkg-config --libs opencv)
+CXXFLAGS += -c -Wall $(shell pkg-config --cflags opencv4)
+LDFLAGS += $(shell pkg-config --libs opencv4)
 
 TST=./tst
 RES=./res
