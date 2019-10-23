@@ -52,6 +52,11 @@ union status
 };
 
 
+struct sprite_info
+{
+    uint8_t y, tile_index, attributes, x;
+};
+
 // Initialize ppu power up state
 void ppu_init();
 

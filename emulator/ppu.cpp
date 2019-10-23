@@ -16,6 +16,12 @@ uint8_t nametable[2][30][32];
 // and is divided into four 2-bit areas. Each area covers 2×2 tiles
 uint8_t attribute_table[8][8];
 
+// Object Attribute Memory, sprite information.
+sprite_info oam[64];
+
+// Address used by CPU to write to OAM.
+uint8_t oam_address;
+
 // CPU's shared registers
 ctrl PPUCTRL;
 status PPUSTATUS;
@@ -301,6 +307,14 @@ void ppu_write(uint16_t address, uint8_t data)
     }
 }
 
+void exec_dma(uint8_t address_high)
+{
+    for (uint16_t i = 0; i < 256; i++)
+        ((uint8_t *)oam)[oam_address++] = mcu.load_absolute(build_dword(address_high, (uint8_t)i)).second;
+    // TODO: count cpu cycles.
+}
+
+
 void write_register(uint16_t address, uint8_t data)
 {
     switch (address)
@@ -310,6 +324,7 @@ void write_register(uint16_t address, uint8_t data)
         PPUCTRL.byte = data;
         break;
     case 0x2003:
+        oam_address = data;
         break;
     case 0x2004:
         break;
@@ -331,6 +346,7 @@ void write_register(uint16_t address, uint8_t data)
         vram_addr += PPUCTRL.flags.increment_mode ? 32 : 1;
         break;
     case 0x4014:
+        exec_dma(data);
         break;
     default:
         break;
