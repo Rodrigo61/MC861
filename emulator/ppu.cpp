@@ -159,16 +159,13 @@ pair<bool, color> get_sprite_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx, 
     return {color_idx != 0, colors[palettes[4 * palette_idx + color_idx]]};
 }
 
+vector<int> scanline_selected_sprites;
+
 void print_sprite_pixel(uint8_t patt_tbl_idx)
 {
-    vector<int> selected;
-    for (int i = 0; selected.size() < 8 && i < 64; i++)
-        if (oam[i].y != 0 && oam[i].y < scanline && scanline <= oam[i].y + 8)
-            selected.push_back(i);
-
     color pixel_color;
     bool any_color = false;
-    for (int i : selected)
+    for (int i : scanline_selected_sprites)
     {
         if (oam[i].x <= cycle && cycle < oam[i].x + 8)
         {
@@ -297,6 +294,15 @@ void print_screen()
     cv::waitKey(1); // TODO: move this to main.
 }
 
+void select_scanline_sprites()
+{
+    scanline_selected_sprites.clear();
+
+    for (int i = 0; scanline_selected_sprites.size() < 8 && i < 64; i++)
+        if (oam[i].y != 0 && oam[i].y < scanline && scanline <= oam[i].y + 8)
+            scanline_selected_sprites.push_back(i);
+}
+
 void ppu_clock()
 {
     if (cycle < SCREEN_PIXEL_WIDTH && scanline < SCREEN_PIXEL_HEIGHT)
@@ -305,7 +311,12 @@ void ppu_clock()
         print_pixel(0, 1);
 
         if (PPUMASK.flags.show_fg)
+        {
+            if (cycle == 0)
+                select_scanline_sprites();
+
             print_sprite_pixel(0);
+        }
     }
 
     // Checks for VBlank range
