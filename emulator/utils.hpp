@@ -3,6 +3,22 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+class code_timer
+{
+	chrono::high_resolution_clock::time_point begin;
+
+public:
+	code_timer()
+	{
+		begin = chrono::high_resolution_clock::now();
+	}
+
+	double seconds()
+	{
+		return chrono::duration_cast<chrono::duration<double>>(chrono::high_resolution_clock::now() - begin).count();
+	}
+};
+
 // Forms a 16-bit word (aka. double word or dword) from two bytes.
 uint16_t build_dword(uint8_t high_byte, uint8_t low_byte);
 

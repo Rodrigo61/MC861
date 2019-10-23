@@ -204,8 +204,18 @@ void ppu_init()
 
 }
 
+long long frame_counter = 0;
+code_timer fps_timer;
+
 void print_screen()
 {
+    frame_counter++;
+    if (frame_counter % 60 == 0)
+    {
+        cout << (60 / fps_timer.seconds()) << " fps" << endl;
+        fps_timer = code_timer();
+    }
+
     auto scaled_screen = screen;
     cv::resize(screen, scaled_screen, cv::Size(), 2, 2);
     imshow(windows_title, scaled_screen);
@@ -221,7 +231,7 @@ void ppu_clock()
     }
         
     // Checks for VBlank range
-    if (scanline >= 241 && cycle == 1)
+    if (scanline == 241 && cycle == 1)
     {
         PPUSTATUS.flags.vblank = 1;
         // TODO: generate NMI
