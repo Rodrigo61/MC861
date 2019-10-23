@@ -219,7 +219,7 @@ void print_screen()
     auto scaled_screen = screen;
     cv::resize(screen, scaled_screen, cv::Size(), 2, 2);
     imshow(windows_title, scaled_screen);
-    cv::waitKey(1);
+    cv::waitKey(1); // TODO: move this to main.
 }
 
 void ppu_clock()
@@ -234,8 +234,9 @@ void ppu_clock()
     if (scanline == 241 && cycle == 1)
     {
         PPUSTATUS.flags.vblank = 1;
-        // TODO: generate NMI
         print_screen();
+        if (PPUCTRL.flags.enable_nmi)
+            set_nmi();
     }
     
     cycle++;

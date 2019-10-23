@@ -8,6 +8,10 @@ const uint8_t bit7_mask = (1 << 7);
 
 #define RESET_ADDRESS_LOW 0xfffc
 #define RESET_ADDRESS_HIGH 0xfffd
+
+#define NMI_ADDRESS_LOW 0xfffa
+#define NMI_ADDRESS_HIGH 0xfffb
+
 #define NESTEST_DEBUG 0
 
 // Represents status register as a sequence of one bit integers. Names given as in 6502 manual.
@@ -96,3 +100,5 @@ void set_decimal_flag(uint8_t data);
 // Sets or resets negative flag based on the given data.
 void set_negative_flag(uint8_t data);
 
+// Sets NMI interruption to happen on the next CPU clock.
+void set_nmi();

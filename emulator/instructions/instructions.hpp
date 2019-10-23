@@ -271,3 +271,5 @@ void exec_shift(instruction ins);
 void exec_rotate(instruction ins);
 
 void exec_bit(instruction ins);
+
+void exec_nmi();

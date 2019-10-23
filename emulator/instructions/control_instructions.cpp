@@ -145,5 +145,15 @@ void exec_rti(instruction ins)
 	write_log();
 }
 
+void exec_nmi()
+{
+	mcu.store_absolute(build_dword(0x01, registers.sp), get_high(registers.pc));
+	registers.sp--;
+	mcu.store_absolute(build_dword(0x01, registers.sp), get_low(registers.pc));
+	registers.sp--;
+	mcu.store_absolute(build_dword(0x01, registers.sp), registers.p.v & 0b11101111); // NMI writes 0 in bit 4.
+	registers.sp--;
 
+	registers.pc = build_dword(mcu.load_absolute(NMI_ADDRESS_HIGH).second, mcu.load_absolute(NMI_ADDRESS_LOW).second);
+}
 

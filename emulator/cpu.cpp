@@ -8,6 +8,9 @@ memory_control_unit mcu;
 
 long long cycle_count = 0;
 
+// True if nmi should happen as soon as possible.
+bool nmi_flag = false;
+
 void cpu_init(const string rom_path)
 {
 	build_instruction_set();
@@ -39,6 +42,12 @@ void cpu_clock()
 	*/
 	if (cycle_count == 0)
 	{
+		if (nmi_flag)
+		{
+			nmi_flag = false;
+			exec_nmi();
+		}
+
 		instruction ins = decode_next_instruction();
 
 		if (NESTEST_DEBUG)
@@ -136,4 +145,9 @@ void set_negative_flag(uint8_t data)
 {
 	// Explicitly acknowledge you do not need the excess bits to solve warning.
 	registers.p.f.n = (((data & bit7_mask) > 0) ? 1 : 0) & 1;
+}
+
+void set_nmi()
+{
+	nmi_flag = true;
 }

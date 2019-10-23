@@ -126,7 +126,12 @@ uint16_t memory_control_unit::store_absolute(uint16_t address, uint8_t data)
 	}
 	else if (address >= APU_BASE && address < APU_BASE + APU_SIZE)
 	{
-		apu_registers[address - APU_BASE] = data;
+		if (address == 0x4014) // TODO: bad code.
+			write_register(address, data);
+		else
+		{
+			apu_registers[address - APU_BASE] = data;
+		}
 	}
 	else if (address >= PPU_BASE && address < APU_BASE)
 	{
