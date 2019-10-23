@@ -39,14 +39,14 @@ uint16_t cycle, scanline;
 
 // Address used by CPU to write/read using registers $2006/$2007
 uint16_t vram_addr;
-bool address_latch;     // used to switch between low and high address
+bool address_latch; // used to switch between low and high address
 
-// Functions that return the x/y position of the nametable's tile which 
+// Functions that return the x/y position of the nametable's tile which
 // the current scanline/cycle are within
 uint8_t tile_y() { return scanline / 8; }
 uint8_t tile_x() { return cycle / 8; }
 
-// Functions that return the pixel's x/y position relative to the 
+// Functions that return the pixel's x/y position relative to the
 // current tile which the current scanline/cycle are within
 uint8_t pixel_y() { return scanline % 8; }
 uint8_t pixel_x() { return cycle % 8; }
@@ -65,9 +65,9 @@ int get_palette_idx_from_attr_tbl()
     uint8_t group_4x4_y = tile_y() / 4;
     uint8_t group_4x4_x = tile_x() / 4;
     uint8_t attribute = attribute_table[group_4x4_y][group_4x4_x];
- 
+
     // Retrieves which one of the 4 2x2 subgroups of the previous 4x4 the
-    // current scanline/cycle are within 
+    // current scanline/cycle are within
     uint8_t group_2x2_y = (tile_y() / 2) % 2;
     uint8_t group_2x2_x = (tile_x() / 2) % 2;
 
@@ -81,11 +81,11 @@ int get_palette_idx_from_attr_tbl()
         return get_bit_range(attribute, 4, 5);
     if (group_2x2_x == 1 && group_2x2_y == 1)
         return get_bit_range(attribute, 6, 7);
-    
+
     assert(false);
 }
 
-color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx, 
+color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx,
                                     uint8_t patt_tbl_tile_y, uint8_t patt_tbl_tile_x)
 {
     int palette_idx = get_palette_idx_from_attr_tbl();
@@ -95,16 +95,16 @@ color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx,
                                       [patt_tbl_tile_x]
                                       [0]
                                       [pixel_y()];
-    
+
     // MSB corresponds to the most left pixel
     patt_bit_0 = get_bit_range(patt_bit_0, 7 - pixel_x(), 7 - pixel_x());
-                                        
+
     uint8_t patt_bit_1 = pattern_table[pattern_tbl_idx]
                                       [patt_tbl_tile_y]
                                       [patt_tbl_tile_x]
                                       [1]
                                       [pixel_y()];
-    
+
     // MSB corresponds to the most left pixel
     patt_bit_1 = get_bit_range(patt_bit_1, 7 - pixel_x(), 7 - pixel_x());
 
@@ -124,12 +124,83 @@ color get_pixel_color_from_nametable(uint8_t nametable_idx, uint8_t patt_tbl_idx
 }
 
 void print_pixel(uint8_t nametable_idx, uint8_t patt_tbl_idx)
-{    
+{
     color pixel_color = get_pixel_color_from_nametable(nametable_idx, patt_tbl_idx);
 
-    screen.at<cv::Vec3b>(scanline, cycle) = cv::Vec3b(pixel_color.B, 
-                                                      pixel_color.G, 
+    screen.at<cv::Vec3b>(scanline, cycle) = cv::Vec3b(pixel_color.B,
+                                                      pixel_color.G,
                                                       pixel_color.R);
+}
+
+pair<bool, color> get_sprite_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx, uint8_t palette_idx,
+                                                       uint8_t patt_tbl_tile_y, uint8_t patt_tbl_tile_x, uint8_t y, uint8_t x)
+{
+    uint8_t patt_bit_0 = pattern_table[pattern_tbl_idx]
+                                      [patt_tbl_tile_y]
+                                      [patt_tbl_tile_x]
+                                      [0]
+                                      [y];
+
+    // MSB corresponds to the most left pixel
+    patt_bit_0 = get_bit_range(patt_bit_0, 7 - x, 7 - x);
+
+    uint8_t patt_bit_1 = pattern_table[pattern_tbl_idx]
+                                      [patt_tbl_tile_y]
+                                      [patt_tbl_tile_x]
+                                      [1]
+                                      [y];
+
+    // MSB corresponds to the most left pixel
+    patt_bit_1 = get_bit_range(patt_bit_1, 7 - x, 7 - x);
+
+    // Building the two bits color_idx
+    uint8_t color_idx = (patt_bit_1 << 1) | patt_bit_0;
+
+    return {color_idx != 0, colors[palettes[4 * palette_idx + color_idx]]};
+}
+
+void print_sprite_pixel(uint8_t patt_tbl_idx)
+{
+    vector<int> selected;
+    for (int i = 0; selected.size() < 8 && i < 64; i++)
+        if (oam[i].y != 0 && oam[i].y < scanline && scanline <= oam[i].y + 8)
+            selected.push_back(i);
+
+    color pixel_color;
+    bool any_color = false;
+    for (int i : selected)
+    {
+        if (oam[i].x <= cycle && cycle < oam[i].x + 8)
+        {
+            int tile_pos_y = scanline - oam[i].y - 1; // PPU draws sprites one below.
+            int tile_pos_x = cycle - oam[i].x;
+
+            if (oam[i].attributes.flags.flip_hor)
+                tile_pos_y = 7 - tile_pos_y;
+
+            if (oam[i].attributes.flags.flip_ver)
+                tile_pos_x = 7 - tile_pos_x;
+
+            if (oam[i].attributes.flags.priority == 1)
+                continue;
+
+            auto res = get_sprite_pixel_color_from_patt_tbl(patt_tbl_idx, 4 + oam[i].attributes.flags.palette, oam[i].tile_index / 16, oam[i].tile_index % 16, tile_pos_y, tile_pos_x);
+            pixel_color = res.second;
+
+            if (res.first)
+            {
+                any_color = true;
+                break;
+            }
+        }
+    }
+
+    // TODO: set flags.
+
+    if (any_color)
+        screen.at<cv::Vec3b>(scanline, cycle) = cv::Vec3b(pixel_color.B,
+                                                          pixel_color.G,
+                                                          pixel_color.R);
 }
 
 void print_pattern_table()
@@ -141,9 +212,8 @@ void print_pattern_table()
         exit(1);
     }
 
-    auto print_pattern = [&] (int table_idx)
-    {
-        cv::Mat table = cv::Mat::zeros( 128, 128, CV_8UC3 );
+    auto print_pattern = [&](int table_idx) {
+        cv::Mat table = cv::Mat::zeros(128, 128, CV_8UC3);
         string windows_title = "Pattern " + to_string(table_idx);
         for (scanline = 0; scanline < 128; scanline++)
         {
@@ -207,7 +277,6 @@ void ppu_init()
     load_colors();
 
     print_pattern_table();
-
 }
 
 long long frame_counter = 0;
@@ -234,8 +303,11 @@ void ppu_clock()
     {
         // Only prints pixels that are within the visible area of screen
         print_pixel(0, 1);
+
+        if (PPUMASK.flags.show_fg)
+            print_sprite_pixel(0);
     }
-        
+
     // Checks for VBlank range
     if (scanline == 241 && cycle == 1)
     {
@@ -244,7 +316,7 @@ void ppu_clock()
         if (PPUCTRL.flags.enable_nmi)
             set_nmi();
     }
-    
+
     cycle++;
 
     // Checks for the end of current frame
@@ -291,7 +363,6 @@ void ppu_write(uint16_t address, uint8_t data)
         {
             palettes[i] = palettes[0];
         }
-        
     }
     else if (address >= 0x2000 && address < 0x23C0)
     {
@@ -314,7 +385,6 @@ void exec_dma(uint8_t address_high)
     // TODO: count cpu cycles.
 }
 
-
 void write_register(uint16_t address, uint8_t data)
 {
     switch (address)
@@ -322,6 +392,9 @@ void write_register(uint16_t address, uint8_t data)
     case 0x2000:
         // CONTROL
         PPUCTRL.byte = data;
+        break;
+    case 0x2001:
+        PPUMASK.byte = data;
         break;
     case 0x2003:
         oam_address = data;
