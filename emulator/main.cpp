@@ -1,5 +1,6 @@
 #include "cpu.hpp"
 #include "ppu.hpp"
+#include "controller.hpp"
 
 #define ESC_CHAR 27
 
@@ -14,6 +15,7 @@ int main(int argc, const char *argv[])
 
 	cpu_init(argv[1]);
 	ppu_init();
+	controller_init();
 
 	// this system clock is at same speed as PPU clock
 	long long system_clock = 0;
@@ -44,8 +46,11 @@ int main(int argc, const char *argv[])
 		if (updated_frame)
 		{
 			updated_frame = false;
-		    if (cv::waitKey(1) == ESC_CHAR)
+			int key_read = cv::waitKey(1);
+		    if (key_read == ESC_CHAR)
 				break;
+			
+			feed_key_controller(key_read);
 		}
 	}
 }
