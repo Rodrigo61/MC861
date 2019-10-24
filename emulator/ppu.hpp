@@ -79,3 +79,5 @@ void ppu_clock();
 uint8_t read_register(uint16_t address);
 
 void write_register(uint16_t address, uint8_t data);
+
+extern bool updated_frame;

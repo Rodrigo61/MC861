@@ -3,6 +3,8 @@
 #define SCREEN_PIXEL_HEIGHT 240
 #define SCREEN_PIXEL_WIDTH 256
 
+bool updated_frame;
+
 // 2 tables of 16x16 tiles, each one using 2 planes of 8 bytes
 uint8_t pattern_table[2][16][16][2][8];
 
@@ -291,7 +293,7 @@ void print_screen()
     auto scaled_screen = screen;
     cv::resize(screen, scaled_screen, cv::Size(), 2, 2);
     imshow(windows_title, scaled_screen);
-    cv::waitKey(1); // TODO: move this to main.
+    updated_frame = true;
 }
 
 void select_scanline_sprites()

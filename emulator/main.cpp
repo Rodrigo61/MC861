@@ -1,6 +1,8 @@
 #include "cpu.hpp"
 #include "ppu.hpp"
 
+#define ESC_CHAR 27
+
 int main(int argc, const char *argv[])
 {
 	if (argc != 2)
@@ -37,6 +39,13 @@ int main(int argc, const char *argv[])
 		if (time_diff > 2e-3) // 2 miliseconds.
 		{
 			std::this_thread::sleep_for(std::chrono::duration<double>(time_diff));
+		}
+
+		if (updated_frame)
+		{
+			updated_frame = false;
+		    if (cv::waitKey(1) == ESC_CHAR)
+				break;
 		}
 	}
 }
