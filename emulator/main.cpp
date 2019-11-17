@@ -49,8 +49,6 @@ int main(int argc, const char *argv[])
 			int key_read = cv::waitKey(1);
 		    if (key_read == ESC_CHAR)
 				break;
-			
-			feed_key_controller(key_read);
 		}
 	}
 }
