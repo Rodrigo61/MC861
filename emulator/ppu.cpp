@@ -48,7 +48,6 @@ uint8_t coarse_x = 0, coarse_y = 0;
 
 // Functions that return the x/y position of the nametable's tile which
 // the current scanline/cycle are within
-// uint8_t tile_y() { return scanline / 8; }
 uint8_t tile_y() 
 { 
     return ((scanline + fine_y) / 8 + coarse_y) % 30; 
@@ -57,7 +56,7 @@ uint8_t tile_x() { return cycle / 8; }
 
 uint8_t current_nametable()
 {
-    int tile = (scanline) / 8 + coarse_y;
+    int tile = (scanline + fine_y) / 8 + coarse_y;
     uint8_t base = (PPUCTRL.flags.nametable_hi_addr << 1) | PPUCTRL.flags.nametable_lo_addr;
     if (tile >= 30 && tile < 60)
     {
@@ -71,7 +70,7 @@ uint8_t current_nametable()
 
 // Functions that return the pixel's x/y position relative to the
 // current tile which the current scanline/cycle are within
-uint8_t pixel_y() { return ((scanline) % 8 + (fine_y)) % 8; }
+uint8_t pixel_y() { return (scanline + fine_y) % 8; }
 uint8_t pixel_x() { return cycle % 8; }
 
 uint8_t get_bit_range(uint8_t source, uint8_t lsb, uint8_t msb)
@@ -493,8 +492,7 @@ void write_register(uint16_t address, uint8_t data)
             fine_y = data & 0x07;
             coarse_y = data >> 3;
 			address_latch = 0;
-		}
-        
+		} 
 		break;
     case 0x2006:
         if (address_latch)
