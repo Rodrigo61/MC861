@@ -58,7 +58,15 @@ uint8_t tile_x() { return cycle / 8; }
 uint8_t current_nametable()
 {
     int tile = (scanline) / 8 + coarse_y;
-    return tile >= 30;
+    uint8_t base = (PPUCTRL.flags.nametable_hi_addr << 1) | PPUCTRL.flags.nametable_lo_addr;
+    if (tile >= 30 && tile < 60)
+    {
+        // within the second nametable
+        return !bool(base);
+    }
+        
+    // // within the base nametable, maybe wrapped up
+    return bool(base);
 }
 
 // Functions that return the pixel's x/y position relative to the
