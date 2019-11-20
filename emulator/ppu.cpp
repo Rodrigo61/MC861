@@ -14,9 +14,9 @@ uint8_t palettes[32];
 // 2 nametables of 30x32 tiles for background
 uint8_t nametable[2][30][32];
 
-// 8x8 attribute table, each byte controls the palette 4×4 tile part of the nametable
+// 2 of 8x8 attribute table, each byte controls the palette 4×4 tile part of the nametable
 // and is divided into four 2-bit areas. Each area covers 2×2 tiles
-uint8_t attribute_table[8][8];
+uint8_t attribute_table[2][8][8];
 
 // Object Attribute Memory, sprite information.
 sprite_info oam[64];
@@ -43,14 +43,27 @@ uint16_t cycle, scanline;
 uint16_t vram_addr;
 bool address_latch; // used to switch between low and high address
 
+uint8_t fine_x = 0, fine_y = 0;
+uint8_t coarse_x = 0, coarse_y = 0;
+
 // Functions that return the x/y position of the nametable's tile which
 // the current scanline/cycle are within
-uint8_t tile_y() { return scanline / 8; }
+// uint8_t tile_y() { return scanline / 8; }
+uint8_t tile_y() 
+{ 
+    return ((scanline + fine_y) / 8 + coarse_y) % 30; 
+}
 uint8_t tile_x() { return cycle / 8; }
+
+uint8_t current_nametable()
+{
+    int tile = (scanline) / 8 + coarse_y;
+    return tile >= 30;
+}
 
 // Functions that return the pixel's x/y position relative to the
 // current tile which the current scanline/cycle are within
-uint8_t pixel_y() { return scanline % 8; }
+uint8_t pixel_y() { return ((scanline) % 8 + (fine_y)) % 8; }
 uint8_t pixel_x() { return cycle % 8; }
 
 uint8_t get_bit_range(uint8_t source, uint8_t lsb, uint8_t msb)
@@ -66,7 +79,7 @@ int get_palette_idx_from_attr_tbl()
     // which the current scanline/cycle are within
     uint8_t group_4x4_y = tile_y() / 4;
     uint8_t group_4x4_x = tile_x() / 4;
-    uint8_t attribute = attribute_table[group_4x4_y][group_4x4_x];
+    uint8_t attribute = attribute_table[current_nametable()][group_4x4_y][group_4x4_x];
 
     // Retrieves which one of the 4 2x2 subgroups of the previous 4x4 the
     // current scanline/cycle are within
@@ -118,6 +131,8 @@ color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx,
 
 color get_pixel_color_from_nametable(uint8_t nametable_idx, uint8_t patt_tbl_idx)
 {
+    assert(nametable_idx == current_nametable());
+    
     // Using division to get indices of the pattern table because it's 16x16 tiles
     uint8_t patt_tbl_tile_x = nametable[nametable_idx][tile_y()][tile_x()] % 16;
     uint8_t patt_tbl_tile_y = nametable[nametable_idx][tile_y()][tile_x()] / 16;
@@ -127,6 +142,7 @@ color get_pixel_color_from_nametable(uint8_t nametable_idx, uint8_t patt_tbl_idx
 
 void print_pixel(uint8_t nametable_idx, uint8_t patt_tbl_idx)
 {
+    assert(nametable_idx == current_nametable());
     color pixel_color = get_pixel_color_from_nametable(nametable_idx, patt_tbl_idx);
 
     screen.at<cv::Vec3b>(scanline, cycle) = cv::Vec3b(pixel_color.B,
@@ -307,17 +323,18 @@ void select_scanline_sprites()
 
 void ppu_clock()
 {
+
     if (cycle < SCREEN_PIXEL_WIDTH && scanline < SCREEN_PIXEL_HEIGHT)
     {
         // Only prints pixels that are within the visible area of screen
-        print_pixel(0, 1);
+        print_pixel(current_nametable(), PPUCTRL.flags.bg_patt_table_addr);
 
         if (PPUMASK.flags.show_fg)
         {
             if (cycle == 0)
                 select_scanline_sprites();
 
-            print_sprite_pixel(0);
+            print_sprite_pixel(PPUCTRL.flags.fg_patt_table_addr);
         }
     }
 
@@ -371,23 +388,65 @@ void ppu_write(uint16_t address, uint8_t data)
     {
         // palettes
         address %= 0x3F00;
+        address %= 0x0020;
         palettes[uint8_t(address)] = data;
         for (uint8_t i = 0; i < 32; i += 4)
         {
             palettes[i] = palettes[0];
         }
     }
-    else if (address >= 0x2000 && address < 0x23C0)
+    // Nametables
+    else if (address >= 0x2000 && address < 0x2400)
     {
-        // background
-        address %= 0x2000;
-        nametable[0][address / 32][address % 32] = data;
+        if (address < 0x23C0)
+        {
+            address %= 0x2000;
+            nametable[0][address / 32][address % 32] = data;
+        }
+        else
+        {
+            address %= 0x23C0;
+            attribute_table[0][address / 8][address % 8] = data;
+        }
+    }
+    else if (address >= 0x2400 && address < 0x2800)
+    {
+        if (address < 0x27C0)
+        {
+            address %= 0x2400;
+            nametable[0][address / 32][address % 32] = data;
+        }
+        else
+        {
+            address %= 0x27C0;
+            attribute_table[0][address / 8][address % 8] = data;
+        }
+    }
+    else if (address >= 0x2800 && address < 0x2C00)
+    {
+        if (address < 0x2BC0)
+        {
+            address %= 0x2800;
+            nametable[1][address / 32][address % 32] = data;
+        }
+        else
+        {
+            address %= 0x2BC0;
+            attribute_table[1][address / 8][address % 8] = data;
+        }
     }
     else
     {
-        // attribute table
-        address %= 0x23C0;
-        attribute_table[address / 8][address % 8] = data;
+        if (address < 0x2FC0)
+        {
+            address %= 0x2C00;
+            nametable[1][address / 32][address % 32] = data;
+        }
+        else
+        {
+            address %= 0x2FC0;
+            attribute_table[1][address / 8][address % 8] = data;
+        }
     }
 }
 
@@ -415,7 +474,20 @@ void write_register(uint16_t address, uint8_t data)
     case 0x2004:
         break;
     case 0x2005:
-        break;
+        if (address_latch == 0)
+		{
+            fine_x = data & 0x07;
+            coarse_x = data >> 3;
+			address_latch = 1;
+		}
+		else
+		{
+            fine_y = data & 0x07;
+            coarse_y = data >> 3;
+			address_latch = 0;
+		}
+        
+		break;
     case 0x2006:
         if (address_latch)
         {
