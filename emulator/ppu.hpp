@@ -42,7 +42,8 @@ union status {
     // $2002
     struct status_f
     {
-        uint8_t TODO : 7; //TODO
+        uint8_t TODO : 6; //TODO
+        uint8_t sprite_0hit: 1;
         uint8_t vblank : 1;
     } flags;
     uint8_t byte;

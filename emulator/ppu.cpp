@@ -43,6 +43,10 @@ uint16_t cycle, scanline;
 uint16_t vram_addr;
 bool address_latch; // used to switch between low and high address
 
+// Buffer used to transfer data using register 2007
+uint8_t data_buffer;
+
+// Variables used at
 uint8_t fine_x = 0, fine_y = 0;
 uint8_t coarse_x = 0, coarse_y = 0;
 
@@ -72,6 +76,14 @@ uint8_t current_nametable()
 // current tile which the current scanline/cycle are within
 uint8_t pixel_y() { return (scanline + fine_y) % 8; }
 uint8_t pixel_x() { return cycle % 8; }
+
+// Get color from palette considering the mirrors
+color get_color(uint8_t palette_color_id)
+{
+    if (palette_color_id % 4 == 0)
+        return colors[palettes[0]];
+    return colors[palettes[palette_color_id]];
+}
 
 uint8_t get_bit_range(uint8_t source, uint8_t lsb, uint8_t msb)
 {
@@ -107,8 +119,9 @@ int get_palette_idx_from_attr_tbl()
     assert(false);
 }
 
-color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx,
-                                    uint8_t patt_tbl_tile_y, uint8_t patt_tbl_tile_x)
+pair<color, uint8_t> get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx,
+                                    uint8_t patt_tbl_tile_y, uint8_t patt_tbl_tile_x,
+                                    uint8_t patt_tbl_pixel_y, uint8_t patt_tbl_pixel_x)
 {
     int palette_idx = get_palette_idx_from_attr_tbl();
 
@@ -116,27 +129,27 @@ color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx,
                                       [patt_tbl_tile_y]
                                       [patt_tbl_tile_x]
                                       [0]
-                                      [pixel_y()];
+                                      [patt_tbl_pixel_y];
 
     // MSB corresponds to the most left pixel
-    patt_bit_0 = get_bit_range(patt_bit_0, 7 - pixel_x(), 7 - pixel_x());
+    patt_bit_0 = get_bit_range(patt_bit_0, 7 - patt_tbl_pixel_x, 7 - patt_tbl_pixel_x);
 
     uint8_t patt_bit_1 = pattern_table[pattern_tbl_idx]
                                       [patt_tbl_tile_y]
                                       [patt_tbl_tile_x]
                                       [1]
-                                      [pixel_y()];
+                                      [patt_tbl_pixel_y];
 
     // MSB corresponds to the most left pixel
-    patt_bit_1 = get_bit_range(patt_bit_1, 7 - pixel_x(), 7 - pixel_x());
+    patt_bit_1 = get_bit_range(patt_bit_1, 7 - patt_tbl_pixel_x, 7 - patt_tbl_pixel_x);
 
     // Building the two bits color_idx
     uint8_t color_idx = (patt_bit_1 << 1) | patt_bit_0;
 
-    return colors[palettes[4 * palette_idx + color_idx]];
+    return {get_color(4 * palette_idx + color_idx), color_idx};
 }
 
-color get_pixel_color_from_nametable(uint8_t nametable_idx, uint8_t patt_tbl_idx)
+pair<color, uint8_t> get_pixel_color_from_nametable(uint8_t nametable_idx, uint8_t patt_tbl_idx)
 {
     assert(nametable_idx == current_nametable());
     
@@ -144,13 +157,13 @@ color get_pixel_color_from_nametable(uint8_t nametable_idx, uint8_t patt_tbl_idx
     uint8_t patt_tbl_tile_x = nametable[nametable_idx][tile_y()][tile_x()] % 16;
     uint8_t patt_tbl_tile_y = nametable[nametable_idx][tile_y()][tile_x()] / 16;
 
-    return get_pixel_color_from_patt_tbl(patt_tbl_idx, patt_tbl_tile_y, patt_tbl_tile_x);
+    return get_pixel_color_from_patt_tbl(patt_tbl_idx, patt_tbl_tile_y, patt_tbl_tile_x, pixel_y(), pixel_x());
 }
 
 void print_pixel(uint8_t nametable_idx, uint8_t patt_tbl_idx)
 {
     assert(nametable_idx == current_nametable());
-    color pixel_color = get_pixel_color_from_nametable(nametable_idx, patt_tbl_idx);
+    color pixel_color = get_pixel_color_from_nametable(nametable_idx, patt_tbl_idx).first;
 
     screen.at<cv::Vec3b>(scanline, cycle) = cv::Vec3b(pixel_color.B,
                                                       pixel_color.G,
@@ -181,7 +194,7 @@ pair<bool, color> get_sprite_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx, 
     // Building the two bits color_idx
     uint8_t color_idx = (patt_bit_1 << 1) | patt_bit_0;
 
-    return {color_idx != 0, colors[palettes[4 * palette_idx + color_idx]]};
+    return {color_idx != 0, get_color(4 * palette_idx + color_idx)};
 }
 
 vector<int> scanline_selected_sprites;
@@ -211,6 +224,11 @@ void print_sprite_pixel(uint8_t patt_tbl_idx)
 
             if (res.first)
             {
+                uint8_t bg_color_idx = get_pixel_color_from_nametable(current_nametable(), PPUCTRL.flags.bg_patt_table_addr).second;
+                if (i == 0 /*&& bg_color_idx != 0*/)
+                {
+                    PPUSTATUS.flags.sprite_0hit = 1;
+                }
                 any_color = true;
                 break;
             }
@@ -227,22 +245,15 @@ void print_sprite_pixel(uint8_t patt_tbl_idx)
 
 void print_pattern_table()
 {
-    if (cycle != 0 || scanline != 0)
-    {
-        cout << "print_pattern_table function should be called before the first ppu_clock()." << endl;
-        cout << "because it uses scanline/cycle variables." << endl;
-        exit(1);
-    }
-
     auto print_pattern = [&](int table_idx) {
         cv::Mat table = cv::Mat::zeros(128, 128, CV_8UC3);
         string windows_title = "Pattern " + to_string(table_idx);
-        for (scanline = 0; scanline < 128; scanline++)
+        for (int i = 0; i < 128; i++)
         {
-            for (cycle = 0; cycle < 128; cycle++)
+            for (int j = 0; j < 128; j++)
             {
-                color pixel_color = get_pixel_color_from_patt_tbl(table_idx, tile_y(), tile_x());
-                table.at<cv::Vec3b>(scanline, cycle) = cv::Vec3b(pixel_color.R, pixel_color.G, pixel_color.B);
+                color pixel_color = get_pixel_color_from_patt_tbl(table_idx, i / 8, j / 8, i % 8, j % 8).first;
+                table.at<cv::Vec3b>(i, j) = cv::Vec3b(pixel_color.R, pixel_color.G, pixel_color.B);
             }
         }
         auto scaled_table = table;
@@ -270,22 +281,7 @@ void load_chr_from_mcu()
     auto chr = mcu.get_chr();
     int chr_it = 0;
 
-    for (int side = 0; side < 2; side++)
-    {
-        for (int row = 0; row < 16; row++)
-        {
-            for (int col = 0; col < 16; col++)
-            {
-                for (int plane = 0; plane < 2; plane++)
-                {
-                    for (int byte_row = 0; byte_row < 8; byte_row++)
-                    {
-                        pattern_table[side][row][col][plane][byte_row] = chr[chr_it++];
-                    }
-                }
-            }
-        }
-    }
+    memcpy(pattern_table, chr, sizeof(pattern_table));
 }
 
 void ppu_init()
@@ -309,7 +305,7 @@ void print_screen()
     frame_counter++;
     if (frame_counter % 60 == 0)
     {
-        cout << (60 / fps_timer.seconds()) << " fps" << endl;
+        //cout << (60 / fps_timer.seconds()) << " fps" << endl;
         fps_timer = code_timer();
     }
 
@@ -330,7 +326,6 @@ void select_scanline_sprites()
 
 void ppu_clock()
 {
-
     if (cycle < SCREEN_PIXEL_WIDTH && scanline < SCREEN_PIXEL_HEIGHT)
     {
         // Only prints pixels that are within the visible area of screen
@@ -350,6 +345,7 @@ void ppu_clock()
     {
         PPUSTATUS.flags.vblank = 1;
         print_screen();
+        print_pattern_table();
         if (PPUCTRL.flags.enable_nmi)
             set_nmi();
     }
@@ -364,43 +360,29 @@ void ppu_clock()
         if (scanline >= 261)
         {
             PPUSTATUS.flags.vblank = 0;
+            PPUSTATUS.flags.sprite_0hit = 0;
             scanline = 0;
         }
     }
 }
 
-uint8_t read_register(uint16_t address)
-{
-    uint8_t data = 0x0;
-    switch (address)
-    {
-    case 0x2002:
-        // STATUS
-        address_latch = false;
-        data = PPUSTATUS.byte;
-        break;
-    case 0x2004:
-        break;
-    case 0x2007:
-        break;
-    default:
-        break;
-    }
-    return data;
-}
 
 void ppu_write(uint16_t address, uint8_t data)
 {
+    if (address <= 0x1FFF)
+    {
+        cout << "Writting in pattern table is not allowed yet. address = " << hex << int(address) << endl;
+        exit(1);
+    }
     if (address >= 0x3F00)
     {
         // palettes
         address %= 0x3F00;
         address %= 0x0020;
         palettes[uint8_t(address)] = data;
-        for (uint8_t i = 0; i < 32; i += 4)
-        {
-            palettes[i] = palettes[0];
-        }
+
+        if (uint8_t(address) % 4 == 0)
+            palettes[0] = palettes[uint8_t(address)];
     }
     // Nametables
     else if (address >= 0x2000 && address < 0x2400)
@@ -442,7 +424,7 @@ void ppu_write(uint16_t address, uint8_t data)
             attribute_table[1][address / 8][address % 8] = data;
         }
     }
-    else
+    else if (address >= 0x2C00 && address < 0x3000)
     {
         if (address < 0x2FC0)
         {
@@ -457,11 +439,49 @@ void ppu_write(uint16_t address, uint8_t data)
     }
 }
 
+uint8_t ppu_read(uint16_t address)
+{
+    if (address <= 0x1FFF)
+    {
+        return ((uint8_t *)pattern_table) [address];
+    }
+    else
+    {
+        cout << "Reading from this area is not implemented yet." << endl;
+        exit(1);
+    }
+}
+
 void exec_dma(uint8_t address_high)
 {
     for (uint16_t i = 0; i < 256; i++)
         ((uint8_t *)oam)[oam_address++] = mcu.load_absolute(build_dword(address_high, (uint8_t)i)).second;
     // TODO: count cpu cycles.
+}
+
+uint8_t read_register(uint16_t address)
+{
+    uint8_t data = 0x0;
+    switch (address)
+    {
+    case 0x2002:
+        // STATUS
+        address_latch = false;
+        data = PPUSTATUS.byte;
+        break;
+    case 0x2004:
+        break;
+    case 0x2007:
+        data = data_buffer;
+        data_buffer = ppu_read(vram_addr);
+        vram_addr += PPUCTRL.flags.increment_mode ? 32 : 1;
+        break;
+    default:
+        break;
+    }
+   // cout << "address = " << hex << int(address) << endl;
+   // cout << "data = " << hex << int(data) << endl;
+    return data;
 }
 
 void write_register(uint16_t address, uint8_t data)
@@ -485,14 +505,13 @@ void write_register(uint16_t address, uint8_t data)
 		{
             fine_x = data & 0x07;
             coarse_x = data >> 3;
-			address_latch = 1;
 		}
 		else
 		{
             fine_y = data & 0x07;
             coarse_y = data >> 3;
-			address_latch = 0;
 		} 
+        address_latch = !address_latch;
 		break;
     case 0x2006:
         if (address_latch)
