@@ -4,7 +4,8 @@
 
 void set_apu_flags(uint16_t index, uint8_t value);
 
-struct channel{
+struct channel
+{
     int16_t length_counter, linear_counter, address, envelope;
     int16_t sweep_delay, env_delay, wave_counter, hold, phase, level;
     uint16_t duty_cycle;
@@ -25,6 +26,9 @@ struct channel{
     uint16_t loop_enabled;
     uint16_t linear_counter_disable;
 };
+
 void apu_clock();
+
 void apu_init();
+
 void print_flags(channel c);
