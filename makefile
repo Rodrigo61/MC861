@@ -1,7 +1,6 @@
 CC=g++
-CCFLAGS=-std=c++14 -g  -Wall -Wextra -Wno-unused-result -Wconversion -Wfatal-errors -Wsign-conversion
+CCFLAGS=-std=c++14 -Ofast -Wall -Wextra -Wno-unused-result -Wconversion -Wfatal-errors -Wsign-conversion $(shell pkg-config --cflags opencv4)
 
-CXXFLAGS += -c -Wall $(shell pkg-config --cflags opencv4)
 LDFLAGS += $(shell pkg-config --libs opencv4) -lXtst -lX11
 
 TST=./tst
@@ -24,7 +23,7 @@ all: ${BIN} ${LOG} ${NES}
 ${NES}: $(OBJFILES)
 	${CC} ${CCFLAGS} $(OBJFILES) -o ${NES} $(LDFLAGS)
 
-%.o: %.cpp; $(CXX) $< -o $@ $(CXXFLAGS)
+%.o: %.cpp; $(CXX) $< -o $@ -c $(CCFLAGS)
 
 ${BIN}:
 	@mkdir -p ${BIN}
