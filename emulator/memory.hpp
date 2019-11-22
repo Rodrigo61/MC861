@@ -34,6 +34,9 @@ private:
 	// CHR ROM(RAM)
 	uint8_t chr[CHR_SIZE];
 
+	// Game Header
+	uint8_t header[NES_HEADER_SIZE];
+
 public:
 	memory_control_unit();
 
@@ -87,8 +90,10 @@ public:
 
 	uint16_t store_indirect_y(uint8_t zero_page_address, uint8_t data);
 
+	// Get which mirror option is set
+	uint8_t get_mirroring();
 
-	// TODO: refactor below
+	// Get CHR memory
 	uint8_t* get_chr()
 	{
 		return chr;

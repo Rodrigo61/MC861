@@ -14,15 +14,17 @@ uint8_t palettes[32];
 // 2 nametables of 30x32 tiles for background
 uint8_t nametable[2][30][32];
 
-// 8x8 attribute table, each byte controls the palette 4×4 tile part of the nametable
+// 2 of 8x8 attribute table, each byte controls the palette 4×4 tile part of the nametable
 // and is divided into four 2-bit areas. Each area covers 2×2 tiles
-uint8_t attribute_table[8][8];
+uint8_t attribute_table[2][8][8];
 
 // Object Attribute Memory, sprite information.
 sprite_info oam[64];
 
 // Address used by CPU to write to OAM.
 uint8_t oam_address;
+
+uint8_t mirroring_type;
 
 // CPU's shared registers
 ctrl PPUCTRL;
@@ -43,15 +45,62 @@ uint16_t cycle, scanline;
 uint16_t vram_addr;
 bool address_latch; // used to switch between low and high address
 
+// Buffer used to transfer data using register 2007
+uint8_t data_buffer;
+
+// Variables used at
+uint8_t fine_x = 0, fine_y = 0;
+uint8_t coarse_x = 0, coarse_y = 0;
+
 // Functions that return the x/y position of the nametable's tile which
 // the current scanline/cycle are within
-uint8_t tile_y() { return scanline / 8; }
-uint8_t tile_x() { return cycle / 8; }
+uint8_t tile_y() 
+{ 
+    return ((scanline + fine_y) / 8 + coarse_y) % 30; 
+}
+uint8_t tile_x()
+{
+    return ((cycle + fine_x) / 8 + coarse_x) % 32; 
+}
+
+uint8_t current_nametable()
+{
+    int tile;
+    int border_limit;
+    if (mirroring_type == VERTICAL_MIRRORING)
+    {
+        tile = (scanline + fine_y) / 8 + coarse_y;
+        border_limit = 30;
+    }
+    else
+    {
+        tile = (cycle + fine_x) / 8 + coarse_x;
+        border_limit = 32;
+    }
+
+    uint8_t base = (PPUCTRL.flags.nametable_hi_addr << 1) | PPUCTRL.flags.nametable_lo_addr;
+    if (tile >= border_limit && tile < 60)
+    {
+        // within the second nametable
+        return !bool(base);
+    }
+        
+    // within the base nametable, maybe wrapped up
+    return bool(base);
+}
 
 // Functions that return the pixel's x/y position relative to the
 // current tile which the current scanline/cycle are within
-uint8_t pixel_y() { return scanline % 8; }
-uint8_t pixel_x() { return cycle % 8; }
+uint8_t pixel_y() { return (scanline + fine_y) % 8; }
+uint8_t pixel_x() { return (cycle + fine_x) % 8; }
+
+// Get color from palette considering the mirrors
+color get_color(uint8_t palette_color_id)
+{
+    if (palette_color_id % 4 == 0)
+        return colors[palettes[0]];
+    return colors[palettes[palette_color_id]];
+}
 
 uint8_t get_bit_range(uint8_t source, uint8_t lsb, uint8_t msb)
 {
@@ -66,7 +115,7 @@ int get_palette_idx_from_attr_tbl()
     // which the current scanline/cycle are within
     uint8_t group_4x4_y = tile_y() / 4;
     uint8_t group_4x4_x = tile_x() / 4;
-    uint8_t attribute = attribute_table[group_4x4_y][group_4x4_x];
+    uint8_t attribute = attribute_table[current_nametable()][group_4x4_y][group_4x4_x];
 
     // Retrieves which one of the 4 2x2 subgroups of the previous 4x4 the
     // current scanline/cycle are within
@@ -87,8 +136,9 @@ int get_palette_idx_from_attr_tbl()
     assert(false);
 }
 
-color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx,
-                                    uint8_t patt_tbl_tile_y, uint8_t patt_tbl_tile_x)
+pair<color, uint8_t> get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx,
+                                    uint8_t patt_tbl_tile_y, uint8_t patt_tbl_tile_x,
+                                    uint8_t patt_tbl_pixel_y, uint8_t patt_tbl_pixel_x)
 {
     int palette_idx = get_palette_idx_from_attr_tbl();
 
@@ -96,38 +146,41 @@ color get_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx,
                                       [patt_tbl_tile_y]
                                       [patt_tbl_tile_x]
                                       [0]
-                                      [pixel_y()];
+                                      [patt_tbl_pixel_y];
 
     // MSB corresponds to the most left pixel
-    patt_bit_0 = get_bit_range(patt_bit_0, 7 - pixel_x(), 7 - pixel_x());
+    patt_bit_0 = get_bit_range(patt_bit_0, 7 - patt_tbl_pixel_x, 7 - patt_tbl_pixel_x);
 
     uint8_t patt_bit_1 = pattern_table[pattern_tbl_idx]
                                       [patt_tbl_tile_y]
                                       [patt_tbl_tile_x]
                                       [1]
-                                      [pixel_y()];
+                                      [patt_tbl_pixel_y];
 
     // MSB corresponds to the most left pixel
-    patt_bit_1 = get_bit_range(patt_bit_1, 7 - pixel_x(), 7 - pixel_x());
+    patt_bit_1 = get_bit_range(patt_bit_1, 7 - patt_tbl_pixel_x, 7 - patt_tbl_pixel_x);
 
     // Building the two bits color_idx
     uint8_t color_idx = (patt_bit_1 << 1) | patt_bit_0;
 
-    return colors[palettes[4 * palette_idx + color_idx]];
+    return {get_color(4 * palette_idx + color_idx), color_idx};
 }
 
-color get_pixel_color_from_nametable(uint8_t nametable_idx, uint8_t patt_tbl_idx)
+pair<color, uint8_t> get_pixel_color_from_nametable(uint8_t nametable_idx, uint8_t patt_tbl_idx)
 {
+    assert(nametable_idx == current_nametable());
+    
     // Using division to get indices of the pattern table because it's 16x16 tiles
     uint8_t patt_tbl_tile_x = nametable[nametable_idx][tile_y()][tile_x()] % 16;
     uint8_t patt_tbl_tile_y = nametable[nametable_idx][tile_y()][tile_x()] / 16;
 
-    return get_pixel_color_from_patt_tbl(patt_tbl_idx, patt_tbl_tile_y, patt_tbl_tile_x);
+    return get_pixel_color_from_patt_tbl(patt_tbl_idx, patt_tbl_tile_y, patt_tbl_tile_x, pixel_y(), pixel_x());
 }
 
 void print_pixel(uint8_t nametable_idx, uint8_t patt_tbl_idx)
 {
-    color pixel_color = get_pixel_color_from_nametable(nametable_idx, patt_tbl_idx);
+    assert(nametable_idx == current_nametable());
+    color pixel_color = get_pixel_color_from_nametable(nametable_idx, patt_tbl_idx).first;
 
     screen.at<cv::Vec3b>(scanline, cycle) = cv::Vec3b(pixel_color.B,
                                                       pixel_color.G,
@@ -158,7 +211,7 @@ pair<bool, color> get_sprite_pixel_color_from_patt_tbl(uint8_t pattern_tbl_idx, 
     // Building the two bits color_idx
     uint8_t color_idx = (patt_bit_1 << 1) | patt_bit_0;
 
-    return {color_idx != 0, colors[palettes[4 * palette_idx + color_idx]]};
+    return {color_idx != 0, get_color(4 * palette_idx + color_idx)};
 }
 
 vector<int> scanline_selected_sprites;
@@ -180,7 +233,22 @@ void print_sprite_pixel(uint8_t patt_tbl_idx)
             if (oam[i].attributes.flags.flip_ver)
                 tile_pos_x = 7 - tile_pos_x;
 
-            if (oam[i].attributes.flags.priority == 1)
+
+            uint8_t bg_color_idx = get_pixel_color_from_nametable(current_nametable(), PPUCTRL.flags.bg_patt_table_addr).second;
+
+            if (i == 0)
+            {
+                if (get_sprite_pixel_color_from_patt_tbl(patt_tbl_idx, 4 + oam[i].attributes.flags.palette, oam[i].tile_index / 16, oam[i].tile_index % 16, tile_pos_y, tile_pos_x).first)
+                {
+                    // TODO: remove comment below after solve background flick
+                    if (true /*&& bg_color_idx != 0*/)
+                    {
+                        PPUSTATUS.flags.sprite_0hit = 1;
+                    }
+                }
+            }
+
+            if (oam[i].attributes.flags.priority == 1 && bg_color_idx != 0)
                 continue;
 
             auto res = get_sprite_pixel_color_from_patt_tbl(patt_tbl_idx, 4 + oam[i].attributes.flags.palette, oam[i].tile_index / 16, oam[i].tile_index % 16, tile_pos_y, tile_pos_x);
@@ -204,22 +272,15 @@ void print_sprite_pixel(uint8_t patt_tbl_idx)
 
 void print_pattern_table()
 {
-    if (cycle != 0 || scanline != 0)
-    {
-        cout << "print_pattern_table function should be called before the first ppu_clock()." << endl;
-        cout << "because it uses scanline/cycle variables." << endl;
-        exit(1);
-    }
-
     auto print_pattern = [&](int table_idx) {
         cv::Mat table = cv::Mat::zeros(128, 128, CV_8UC3);
         string windows_title = "Pattern " + to_string(table_idx);
-        for (scanline = 0; scanline < 128; scanline++)
+        for (int i = 0; i < 128; i++)
         {
-            for (cycle = 0; cycle < 128; cycle++)
+            for (int j = 0; j < 128; j++)
             {
-                color pixel_color = get_pixel_color_from_patt_tbl(table_idx, tile_y(), tile_x());
-                table.at<cv::Vec3b>(scanline, cycle) = cv::Vec3b(pixel_color.R, pixel_color.G, pixel_color.B);
+                color pixel_color = get_pixel_color_from_patt_tbl(table_idx, i / 8, j / 8, i % 8, j % 8).first;
+                table.at<cv::Vec3b>(i, j) = cv::Vec3b(pixel_color.R, pixel_color.G, pixel_color.B);
             }
         }
         auto scaled_table = table;
@@ -247,22 +308,7 @@ void load_chr_from_mcu()
     auto chr = mcu.get_chr();
     int chr_it = 0;
 
-    for (int side = 0; side < 2; side++)
-    {
-        for (int row = 0; row < 16; row++)
-        {
-            for (int col = 0; col < 16; col++)
-            {
-                for (int plane = 0; plane < 2; plane++)
-                {
-                    for (int byte_row = 0; byte_row < 8; byte_row++)
-                    {
-                        pattern_table[side][row][col][plane][byte_row] = chr[chr_it++];
-                    }
-                }
-            }
-        }
-    }
+    memcpy(pattern_table, chr, sizeof(pattern_table));
 }
 
 void ppu_init()
@@ -270,6 +316,8 @@ void ppu_init()
     address_latch = false;
 
     load_chr_from_mcu();
+    
+    mirroring_type = mcu.get_mirroring();
 
     init_debug_palettes();
 
@@ -302,7 +350,11 @@ void select_scanline_sprites()
 
     for (int i = 0; scanline_selected_sprites.size() < 8 && i < 64; i++)
         if (oam[i].y != 0 && oam[i].y < scanline && scanline <= oam[i].y + 8)
+        {
             scanline_selected_sprites.push_back(i);
+        }
+            
+            
 }
 
 void ppu_clock()
@@ -310,14 +362,14 @@ void ppu_clock()
     if (cycle < SCREEN_PIXEL_WIDTH && scanline < SCREEN_PIXEL_HEIGHT)
     {
         // Only prints pixels that are within the visible area of screen
-        print_pixel(0, 1);
+        print_pixel(current_nametable(), PPUCTRL.flags.bg_patt_table_addr);
 
         if (PPUMASK.flags.show_fg)
         {
             if (cycle == 0)
                 select_scanline_sprites();
 
-            print_sprite_pixel(0);
+            print_sprite_pixel(PPUCTRL.flags.fg_patt_table_addr);
         }
     }
 
@@ -326,6 +378,7 @@ void ppu_clock()
     {
         PPUSTATUS.flags.vblank = 1;
         print_screen();
+        print_pattern_table();
         if (PPUCTRL.flags.enable_nmi)
             set_nmi();
     }
@@ -340,9 +393,105 @@ void ppu_clock()
         if (scanline >= 261)
         {
             PPUSTATUS.flags.vblank = 0;
+            PPUSTATUS.flags.sprite_0hit = 0;
+            // TODO: Not sure about oam_address
+            oam_address = 0;
             scanline = 0;
         }
     }
+}
+
+
+void ppu_write(uint16_t address, uint8_t data)
+{
+    if (address <= 0x1FFF)
+    {
+        cout << "Writting in pattern table is not allowed yet. address = " << hex << int(address) << endl;
+        exit(1);
+    }
+    if (address >= 0x3F00)
+    {
+        // palettes
+        address %= 0x3F00;
+        address %= 0x0020;
+        if (address % 4 == 0)
+            address %= 0x10;
+
+        palettes[uint8_t(address)] = data;
+    }
+    // Nametables
+    else if (address >= 0x2000 && address < 0x2400)
+    {
+        if (address < 0x23C0)
+        {
+            address %= 0x2000;
+            nametable[0][address / 32][address % 32] = data;
+        }
+        else
+        {
+            address %= 0x23C0;
+            attribute_table[0][address / 8][address % 8] = data;
+        }
+    }
+    else if (address >= 0x2400 && address < 0x2800)
+    {
+        if (address < 0x27C0)
+        {
+            address %= 0x2400;
+            nametable[mirroring_type][address / 32][address % 32] = data;
+        }
+        else
+        {
+            address %= 0x27C0;
+            attribute_table[mirroring_type][address / 8][address % 8] = data;
+        }
+    }
+    else if (address >= 0x2800 && address < 0x2C00)
+    {
+        if (address < 0x2BC0)
+        {
+            address %= 0x2800;
+            nametable[1][address / 32][address % 32] = data;
+        }
+        else
+        {
+            address %= 0x2BC0;
+            attribute_table[1][address / 8][address % 8] = data;
+        }
+    }
+    else if (address >= 0x2C00 && address < 0x3000)
+    {
+        if (address < 0x2FC0)
+        {
+            address %= 0x2C00;
+            nametable[!mirroring_type][address / 32][address % 32] = data;
+        }
+        else
+        {
+            address %= 0x2FC0;
+            attribute_table[!mirroring_type][address / 8][address % 8] = data;
+        }
+    }
+}
+
+uint8_t ppu_read(uint16_t address)
+{
+    if (address <= 0x1FFF)
+    {
+        return ((uint8_t *)pattern_table) [address];
+    }
+    else
+    {
+        cout << "Reading from this area is not implemented yet." << endl;
+        exit(1);
+    }
+}
+
+void exec_dma(uint8_t address_high)
+{
+    for (uint16_t i = 0; i < 256; i++)
+        ((uint8_t *)oam)[oam_address++] = mcu.load_absolute(build_dword(address_high, (uint8_t)i)).second;
+    // TODO: count cpu cycles.
 }
 
 uint8_t read_register(uint16_t address)
@@ -354,48 +503,21 @@ uint8_t read_register(uint16_t address)
         // STATUS
         address_latch = false;
         data = PPUSTATUS.byte;
+        // Should be commented to Pacman run
+        //PPUSTATUS.flags.vblank = 0;
         break;
     case 0x2004:
+        data = ((uint8_t *)oam)[oam_address];
         break;
     case 0x2007:
+        data = data_buffer;
+        data_buffer = ppu_read(vram_addr);
+        vram_addr += PPUCTRL.flags.increment_mode ? 32 : 1;
         break;
     default:
         break;
     }
     return data;
-}
-
-void ppu_write(uint16_t address, uint8_t data)
-{
-    if (address >= 0x3F00)
-    {
-        // palettes
-        address %= 0x3F00;
-        palettes[uint8_t(address)] = data;
-        for (uint8_t i = 0; i < 32; i += 4)
-        {
-            palettes[i] = palettes[0];
-        }
-    }
-    else if (address >= 0x2000 && address < 0x23C0)
-    {
-        // background
-        address %= 0x2000;
-        nametable[0][address / 32][address % 32] = data;
-    }
-    else
-    {
-        // attribute table
-        address %= 0x23C0;
-        attribute_table[address / 8][address % 8] = data;
-    }
-}
-
-void exec_dma(uint8_t address_high)
-{
-    for (uint16_t i = 0; i < 256; i++)
-        ((uint8_t *)oam)[oam_address++] = mcu.load_absolute(build_dword(address_high, (uint8_t)i)).second;
-    // TODO: count cpu cycles.
 }
 
 void write_register(uint16_t address, uint8_t data)
@@ -413,9 +535,21 @@ void write_register(uint16_t address, uint8_t data)
         oam_address = data;
         break;
     case 0x2004:
+        ((uint8_t *)oam)[oam_address++] = data;
         break;
     case 0x2005:
-        break;
+        if (address_latch == 0)
+		{
+            fine_x = data & 0x07;
+            coarse_x = data >> 3;
+		} 
+		else
+		{
+            fine_y = data & 0x07;
+            coarse_y = data >> 3;
+		} 
+        address_latch = !address_latch;
+		break;
     case 0x2006:
         if (address_latch)
         {
