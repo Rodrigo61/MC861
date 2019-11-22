@@ -51,7 +51,6 @@ uint8_t data_buffer;
 // Variables used at
 uint8_t fine_x = 0, fine_y = 0;
 uint8_t coarse_x = 0, coarse_y = 0;
-int next_coarse_x, next_coarse_y;
 
 // Functions that return the x/y position of the nametable's tile which
 // the current scanline/cycle are within
@@ -391,11 +390,6 @@ void ppu_clock()
     {
         cycle = 0;
         scanline++;
-        if (next_coarse_x != -1)
-        {
-            coarse_x = next_coarse_x;
-            next_coarse_x = -1;
-        }
         if (scanline >= 261)
         {
             PPUSTATUS.flags.vblank = 0;
@@ -509,7 +503,8 @@ uint8_t read_register(uint16_t address)
         // STATUS
         address_latch = false;
         data = PPUSTATUS.byte;
-        PPUSTATUS.flags.vblank = 0;
+        // Should be commented to Pacman run
+        //PPUSTATUS.flags.vblank = 0;
         break;
     case 0x2004:
         data = ((uint8_t *)oam)[oam_address];
@@ -546,12 +541,12 @@ void write_register(uint16_t address, uint8_t data)
         if (address_latch == 0)
 		{
             fine_x = data & 0x07;
-            next_coarse_x = data >> 3;
+            coarse_x = data >> 3;
 		} 
 		else
 		{
             fine_y = data & 0x07;
-            next_coarse_y = data >> 3;
+            coarse_y = data >> 3;
 		} 
         address_latch = !address_latch;
 		break;

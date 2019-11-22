@@ -20,7 +20,7 @@ void controller_init()
 	keylist[0] = {'q', 'e', '1', '2', 'w', 's', 'a', 'd'};
 	keylist[1] = {'u', 'o', '8', '9', 'i', 'k', 'j', 'l'};
 
-	dpy = XOpenDisplay(":1");
+	dpy = XOpenDisplay(":0");
 	assert(dpy);
 }
 
