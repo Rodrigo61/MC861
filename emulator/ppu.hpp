@@ -6,6 +6,8 @@
 #include "cpu.hpp"
 #include "colors.hpp"
 
+#define VERTICAL_MIRRORING 0
+
 union ctrl {
     // $2000
     struct ctrl_f

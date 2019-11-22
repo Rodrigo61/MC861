@@ -24,6 +24,8 @@ sprite_info oam[64];
 // Address used by CPU to write to OAM.
 uint8_t oam_address;
 
+uint8_t mirroring_type;
+
 // CPU's shared registers
 ctrl PPUCTRL;
 status PPUSTATUS;
@@ -56,26 +58,41 @@ uint8_t tile_y()
 { 
     return ((scanline + fine_y) / 8 + coarse_y) % 30; 
 }
-uint8_t tile_x() { return cycle / 8; }
+uint8_t tile_x()
+{
+    return ((cycle + fine_x) / 8 + coarse_x) % 32; 
+}
 
 uint8_t current_nametable()
 {
-    int tile = (scanline + fine_y) / 8 + coarse_y;
+    int tile;
+    int border_limit;
+    if (mirroring_type == VERTICAL_MIRRORING)
+    {
+        tile = (scanline + fine_y) / 8 + coarse_y;
+        border_limit = 30;
+    }
+    else
+    {
+        tile = (cycle + fine_x) / 8 + coarse_x;
+        border_limit = 32;
+    }
+
     uint8_t base = (PPUCTRL.flags.nametable_hi_addr << 1) | PPUCTRL.flags.nametable_lo_addr;
-    if (tile >= 30 && tile < 60)
+    if (tile >= border_limit && tile < 60)
     {
         // within the second nametable
         return !bool(base);
     }
         
-    // // within the base nametable, maybe wrapped up
+    // within the base nametable, maybe wrapped up
     return bool(base);
 }
 
 // Functions that return the pixel's x/y position relative to the
 // current tile which the current scanline/cycle are within
 uint8_t pixel_y() { return (scanline + fine_y) % 8; }
-uint8_t pixel_x() { return cycle % 8; }
+uint8_t pixel_x() { return (cycle + fine_x) % 8; }
 
 // Get color from palette considering the mirrors
 color get_color(uint8_t palette_color_id)
@@ -289,6 +306,8 @@ void ppu_init()
     address_latch = false;
 
     load_chr_from_mcu();
+    
+    mirroring_type = mcu.get_mirroring();
 
     init_debug_palettes();
 
@@ -403,12 +422,12 @@ void ppu_write(uint16_t address, uint8_t data)
         if (address < 0x27C0)
         {
             address %= 0x2400;
-            nametable[0][address / 32][address % 32] = data;
+            nametable[mirroring_type][address / 32][address % 32] = data;
         }
         else
         {
             address %= 0x27C0;
-            attribute_table[0][address / 8][address % 8] = data;
+            attribute_table[mirroring_type][address / 8][address % 8] = data;
         }
     }
     else if (address >= 0x2800 && address < 0x2C00)
@@ -429,12 +448,12 @@ void ppu_write(uint16_t address, uint8_t data)
         if (address < 0x2FC0)
         {
             address %= 0x2C00;
-            nametable[1][address / 32][address % 32] = data;
+            nametable[!mirroring_type][address / 32][address % 32] = data;
         }
         else
         {
             address %= 0x2FC0;
-            attribute_table[1][address / 8][address % 8] = data;
+            attribute_table[!mirroring_type][address / 8][address % 8] = data;
         }
     }
 }
