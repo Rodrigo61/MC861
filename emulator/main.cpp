@@ -38,8 +38,8 @@ int main(int argc, const char *argv[])
 		}
 
 		double time_diff = system_clock / ppu_clock_speed - timer.seconds();
-		if (system_clock % 1000000 == 0)
-			cout << system_clock << " clocks in " << timer.seconds() << " seconds / " << time_diff << " s difference" << endl;
+		// if (system_clock % 1000000 == 0)
+		// 	cout << system_clock << " clocks in " << timer.seconds() << " seconds / " << time_diff << " s difference" << endl;
 
 		if (time_diff > 2e-3) // 2 miliseconds.
 		{

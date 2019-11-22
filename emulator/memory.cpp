@@ -43,7 +43,6 @@ void memory_control_unit::load_nes_rom(string rom_path)
 	for (int i = 0; i < NES_HEADER_SIZE; i++)
 	{
 		header[i] = vec[i];
-		cout << hex << (int)header[i] << endl;
 	}
 
 	bool has_chr = vec.size() > 17000;
