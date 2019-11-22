@@ -1,11 +1,13 @@
 #include "cpu.hpp"
 #include "ppu.hpp"
+#include "apu.hpp"
 #include "controller.hpp"
 
 #define ESC_CHAR 27
 
 int main(int argc, const char *argv[])
-{
+{	
+	
 	if (argc != 2)
 	{
 		cerr << "Missing argument" << endl;
@@ -13,6 +15,7 @@ int main(int argc, const char *argv[])
 		exit(1);
 	}
 
+	apu_init();
 	cpu_init(argv[1]);
 	ppu_init();
 	controller_init();
@@ -28,9 +31,9 @@ int main(int argc, const char *argv[])
 		system_clock++;
 
 		ppu_clock();
-
 		if (system_clock % 3 == 0)
 		{
+			apu_clock();
 			cpu_clock();
 		}
 
