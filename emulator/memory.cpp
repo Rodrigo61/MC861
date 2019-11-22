@@ -2,6 +2,7 @@
 #include "cpu.hpp"
 #include "ppu.hpp"
 #include "controller.hpp"
+#include "apu.hpp"
 
 memory_control_unit::memory_control_unit()
 {
@@ -69,7 +70,7 @@ pair<uint16_t, uint8_t> memory_control_unit::load_absolute(uint16_t address)
 		}
 		else
 		{
-			return {address, apu_registers[address - APU_BASE]};
+			return {address, 0};
 		}
 	}
 	else if (address >= PPU_BASE && address < APU_BASE)
@@ -142,8 +143,8 @@ uint16_t memory_control_unit::store_absolute(uint16_t address, uint8_t data)
 		}
 		else
 		{
-			apu_registers[address - APU_BASE] = data;
-		}
+			set_apu_flags(address,data);
+		}	
 	}
 	else if (address >= PPU_BASE && address < APU_BASE)
 	{
