@@ -51,6 +51,7 @@ uint8_t data_buffer;
 // Variables used at
 uint8_t fine_x = 0, fine_y = 0;
 uint8_t coarse_x = 0, coarse_y = 0;
+int next_coarse_x, next_coarse_y;
 
 // Functions that return the x/y position of the nametable's tile which
 // the current scanline/cycle are within
@@ -233,7 +234,22 @@ void print_sprite_pixel(uint8_t patt_tbl_idx)
             if (oam[i].attributes.flags.flip_ver)
                 tile_pos_x = 7 - tile_pos_x;
 
-            if (oam[i].attributes.flags.priority == 1)
+
+            uint8_t bg_color_idx = get_pixel_color_from_nametable(current_nametable(), PPUCTRL.flags.bg_patt_table_addr).second;
+
+            if (i == 0)
+            {
+                if (get_sprite_pixel_color_from_patt_tbl(patt_tbl_idx, 4 + oam[i].attributes.flags.palette, oam[i].tile_index / 16, oam[i].tile_index % 16, tile_pos_y, tile_pos_x).first)
+                {
+                    // TODO: remove comment below after solve background flick
+                    if (true /*&& bg_color_idx != 0*/)
+                    {
+                        PPUSTATUS.flags.sprite_0hit = 1;
+                    }
+                }
+            }
+
+            if (oam[i].attributes.flags.priority == 1 && bg_color_idx != 0)
                 continue;
 
             auto res = get_sprite_pixel_color_from_patt_tbl(patt_tbl_idx, 4 + oam[i].attributes.flags.palette, oam[i].tile_index / 16, oam[i].tile_index % 16, tile_pos_y, tile_pos_x);
@@ -241,11 +257,6 @@ void print_sprite_pixel(uint8_t patt_tbl_idx)
 
             if (res.first)
             {
-                uint8_t bg_color_idx = get_pixel_color_from_nametable(current_nametable(), PPUCTRL.flags.bg_patt_table_addr).second;
-                if (i == 0 /*&& bg_color_idx != 0*/)
-                {
-                    PPUSTATUS.flags.sprite_0hit = 1;
-                }
                 any_color = true;
                 break;
             }
@@ -324,7 +335,7 @@ void print_screen()
     frame_counter++;
     if (frame_counter % 60 == 0)
     {
-        //cout << (60 / fps_timer.seconds()) << " fps" << endl;
+        cout << (60 / fps_timer.seconds()) << " fps" << endl;
         fps_timer = code_timer();
     }
 
@@ -340,7 +351,11 @@ void select_scanline_sprites()
 
     for (int i = 0; scanline_selected_sprites.size() < 8 && i < 64; i++)
         if (oam[i].y != 0 && oam[i].y < scanline && scanline <= oam[i].y + 8)
+        {
             scanline_selected_sprites.push_back(i);
+        }
+            
+            
 }
 
 void ppu_clock()
@@ -376,10 +391,17 @@ void ppu_clock()
     {
         cycle = 0;
         scanline++;
+        if (next_coarse_x != -1)
+        {
+            coarse_x = next_coarse_x;
+            next_coarse_x = -1;
+        }
         if (scanline >= 261)
         {
             PPUSTATUS.flags.vblank = 0;
             PPUSTATUS.flags.sprite_0hit = 0;
+            // TODO: Not sure about oam_address
+            oam_address = 0;
             scanline = 0;
         }
     }
@@ -398,10 +420,10 @@ void ppu_write(uint16_t address, uint8_t data)
         // palettes
         address %= 0x3F00;
         address %= 0x0020;
-        palettes[uint8_t(address)] = data;
+        if (address % 4 == 0)
+            address %= 0x10;
 
-        if (uint8_t(address) % 4 == 0)
-            palettes[0] = palettes[uint8_t(address)];
+        palettes[uint8_t(address)] = data;
     }
     // Nametables
     else if (address >= 0x2000 && address < 0x2400)
@@ -487,8 +509,10 @@ uint8_t read_register(uint16_t address)
         // STATUS
         address_latch = false;
         data = PPUSTATUS.byte;
+        PPUSTATUS.flags.vblank = 0;
         break;
     case 0x2004:
+        data = ((uint8_t *)oam)[oam_address];
         break;
     case 0x2007:
         data = data_buffer;
@@ -498,8 +522,6 @@ uint8_t read_register(uint16_t address)
     default:
         break;
     }
-   // cout << "address = " << hex << int(address) << endl;
-   // cout << "data = " << hex << int(data) << endl;
     return data;
 }
 
@@ -518,17 +540,18 @@ void write_register(uint16_t address, uint8_t data)
         oam_address = data;
         break;
     case 0x2004:
+        ((uint8_t *)oam)[oam_address++] = data;
         break;
     case 0x2005:
         if (address_latch == 0)
 		{
             fine_x = data & 0x07;
-            coarse_x = data >> 3;
-		}
+            next_coarse_x = data >> 3;
+		} 
 		else
 		{
             fine_y = data & 0x07;
-            coarse_y = data >> 3;
+            next_coarse_y = data >> 3;
 		} 
         address_latch = !address_latch;
 		break;
